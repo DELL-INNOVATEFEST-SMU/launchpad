@@ -18,13 +18,13 @@ export default function Navbar() {
       name: "Voyager Search",
       href: "/search",
       icon: Search,
-      description: "Scrape subreddit content",
+      description: "Subreddit Web Scraping Tool",
     },
     {
-      name: "Session Notes",
+      name: "Co-Pilot Samantha",
       href: "/case-assistant",
       icon: FileText,
-      description: "Write case studies",
+      description: "AI Case Assistant",
     },
   ];
 

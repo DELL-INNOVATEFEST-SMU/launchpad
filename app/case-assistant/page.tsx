@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import Navbar from "../../components/Navbar";
+import CoPilotSamantha from "../../components/CoPilotSamantha";
 import {
   Bold,
   Italic,
@@ -13,6 +14,7 @@ import {
   Type,
   Info,
   Copy,
+  MessageSquare,
 } from "lucide-react";
 
 interface NoteSection {
@@ -54,6 +56,7 @@ export default function CaseWriter() {
   );
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
+  const [isCoPilotOpen, setIsCoPilotOpen] = useState(false);
   const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>(
     {}
   );
@@ -134,7 +137,6 @@ export default function CaseWriter() {
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/wav" });
         // Here you would typically send the blob to a transcription service
         // For now, we'll just add a placeholder
         const currentContent =
@@ -207,6 +209,16 @@ export default function CaseWriter() {
     URL.revokeObjectURL(url);
   };
 
+  // Prepare context for Co-Pilot Samantha
+  const activeSectionData = sections.find((s) => s.id === activeSection);
+  const coPilotContext = {
+    currentSection: activeSectionData?.title || "General Notes",
+    caseNotes: sections
+      .filter((s) => s.content.trim())
+      .map((s) => `${s.title}:\n${s.content}`)
+      .join("\n\n"),
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -216,6 +228,17 @@ export default function CaseWriter() {
             <div>
               <h2 className="text-2xl font-bold text-black">Session Notes</h2>
             </div>
+            <button
+              onClick={() => setIsCoPilotOpen(!isCoPilotOpen)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                isCoPilotOpen
+                  ? "bg-blue-600 text-white"
+                  : "bg-white border border-gray-200 hover:bg-gray-50 text-gray-700"
+              }`}
+            >
+              <MessageSquare className="h-4 w-4" />
+              {isCoPilotOpen ? "Hide" : "Show"} Co-Pilot
+            </button>
           </div>
 
           <div className="space-y-8">
@@ -376,6 +399,13 @@ export default function CaseWriter() {
           </div>
         </div>
       </div>
+
+      {/* Co-Pilot Samantha Sidebar */}
+      <CoPilotSamantha
+        isOpen={isCoPilotOpen}
+        onToggle={() => setIsCoPilotOpen(!isCoPilotOpen)}
+        context={coPilotContext}
+      />
     </div>
   );
 }
