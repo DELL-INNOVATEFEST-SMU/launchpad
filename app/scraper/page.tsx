@@ -88,11 +88,10 @@ export default function SubredditScraper() {
             <Navbar />
             <div className="flex-1 px-6 py-8">
                 <div className="w-full flex-1 p-8">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="w-full max-w-2xl mx-auto mb-6">
                         <div>
                             <h2 className="text-2xl font-bold text-black">Subreddit Content Finder</h2>
                             <p>Enter the subreddit name(s) and the number of posts you need. We'll gather the content for you automatically.</p>
-
                         </div>
                     </div>
 
@@ -120,7 +119,7 @@ export default function SubredditScraper() {
 
                         <button
                             onClick={addInputRow}
-                            className="flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                            className="flex items-center gap-2 bg-gray-600 hover:bg-gray-500 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                         >
                             <Plus className="w-4 h-4" />
                             Add another subreddit
@@ -130,7 +129,7 @@ export default function SubredditScraper() {
                     <div className="mt-6 pt-6 border-t border-gray-200">
                         <button
                             onClick={handleSubmit}
-                            className="w-full bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
                             disabled={loading}
                             type="button"
                         >

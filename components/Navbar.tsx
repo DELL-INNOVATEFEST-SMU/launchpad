@@ -10,7 +10,7 @@ export default function Navbar() {
     const navItems = [
         {
             name: 'All Posts',
-            href: '/launchpad',
+            href: '/allPosts',
             icon: Database,
             description: 'View messages and analytics'
         },
@@ -21,7 +21,7 @@ export default function Navbar() {
             description: 'Scrape subreddit content'
         },
         {
-            name: 'Case Writer',
+            name: 'Session Notes',
             href: '/casewriter',
             icon: FileText,
             description: 'Write case studies'

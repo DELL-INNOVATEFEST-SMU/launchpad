@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import type { JSX } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Search, ChevronDown, Calendar } from "lucide-react";
+import { Search, ChevronDown, Calendar, Check } from "lucide-react";
 import Navbar from '../../components/Navbar';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -50,6 +50,7 @@ export default function StartingPointAggregator() {
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [pageGroup, setPageGroup] = useState(1);
+    const [rowStatuses, setRowStatuses] = useState<{ [key: number]: string }>({});
 
 
     const fetchData = async () => {
@@ -131,6 +132,13 @@ export default function StartingPointAggregator() {
     // Function to handle page change within group
     const handlePageChange = (newPage) => {
         setPage(newPage);
+    };
+
+    const handleStatusChange = (rowId: number, status: string) => {
+        setRowStatuses(prev => ({
+            ...prev,
+            [rowId]: status
+        }));
     };
 
 
@@ -339,19 +347,29 @@ export default function StartingPointAggregator() {
 
                                         {/* Actions Column */}
                                         <td className="py-4 px-4">
-                                            <div className="flex flex-col gap-2">
-                                                <button className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                                                    </svg>
-                                                    Send
-                                                </button>
-                                                <button className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                    Mark Done
-                                                </button>
+                                            <div className="relative">
+                                                <select
+                                                    value={rowStatuses[row.id] || ""}
+                                                    onChange={(e) => handleStatusChange(row.id, e.target.value)}
+                                                    className={`appearance-none px-4 py-2 pr-8 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
+                                                        rowStatuses[row.id] === 'message-sent'
+                                                            ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                                                            : rowStatuses[row.id] === 'user-replied'
+                                                            ? 'bg-green-100 text-green-700 border border-green-200'
+                                                            : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                                                    }`}
+                                                >
+                                                    <option value="">Pending Action</option>
+                                                    <option value="message-sent">Message Sent</option>
+                                                    <option value="user-replied">User Replied</option>
+                                                </select>
+                                                <ChevronDown className={`absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-4 pointer-events-none ${
+                                                    rowStatuses[row.id] === 'message-sent'
+                                                        ? 'text-blue-600'
+                                                        : rowStatuses[row.id] === 'user-replied'
+                                                        ? 'text-green-600'
+                                                        : 'text-gray-600'
+                                                }`} />
                                             </div>
                                         </td>
                                     </tr>

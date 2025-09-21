@@ -209,7 +209,7 @@ export default function CaseWriter() {
                 <div key={section.id} className="bg-white rounded-lg border border-gray-200">
                   <div className="p-4 border-b border-gray-200 bg-blue-50">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-blue-700">{section.title}</h3>
+                      <h3 className="text-lg font-medium text-black">{section.title}</h3>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setActiveSection(section.id)}
