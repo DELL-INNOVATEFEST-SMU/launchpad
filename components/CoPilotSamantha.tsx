@@ -278,7 +278,7 @@ export default function CoPilotSamantha({
   );
 
   return (
-    <div className="fixed right-0 top-0 h-full w-96 bg-white border-l border-gray-200 shadow-xl z-40 flex flex-col">
+    <div className="w-96 bg-white border-l border-gray-200 shadow-xl flex flex-col h-full">
       {/* Header */}
       <div className="p-4 border-b border-gray-200 bg-blue-50">
         <div className="flex items-center justify-between mb-3">
