@@ -12,6 +12,7 @@ import {
   Download,
   Type,
   Info,
+  Copy,
 } from "lucide-react";
 
 interface NoteSection {
@@ -26,7 +27,7 @@ export default function CaseWriter() {
   const [sections, setSections] = useState<NoteSection[]>([
     {
       id: "general-session-notes",
-      title: "General Session Notes",
+      title: "General Notes",
       content: "",
       isRecording: false,
       infoText:
@@ -34,7 +35,7 @@ export default function CaseWriter() {
     },
     {
       id: "session-evaluation",
-      title: "Session Evaluation / Action Plans",
+      title: "Evaluation / Action Plans",
       content: "",
       isRecording: false,
       infoText:
@@ -52,6 +53,7 @@ export default function CaseWriter() {
     "general-session-notes"
   );
   const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
+  const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>(
     {}
   );
@@ -64,6 +66,19 @@ export default function CaseWriter() {
         section.id === sectionId ? { ...section, content } : section
       )
     );
+  };
+
+  const copyToClipboard = async (sectionId: string) => {
+    const section = sections.find((s) => s.id === sectionId);
+    if (!section || !section.content.trim()) return;
+
+    try {
+      await navigator.clipboard.writeText(section.content);
+      setCopiedSection(sectionId);
+      setTimeout(() => setCopiedSection(null), 2000); // Reset after 2 seconds
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+    }
   };
 
   const formatText = (format: "bold" | "italic" | "list") => {
@@ -281,6 +296,24 @@ export default function CaseWriter() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => copyToClipboard(section.id)}
+                          disabled={!section.content.trim()}
+                          className={`h-8 w-8 p-0 border rounded-md flex items-center justify-center ${
+                            copiedSection === section.id
+                              ? "bg-green-500 text-white border-green-500"
+                              : section.content.trim()
+                              ? "bg-white border-gray-200 hover:bg-gray-50"
+                              : "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
+                          }`}
+                          title={
+                            copiedSection === section.id
+                              ? "Copied!"
+                              : "Copy content"
+                          }
+                        >
+                          <Copy className="h-4 w-4" />
+                        </button>
                         <button
                           onClick={() => setActiveSection(section.id)}
                           className={`h-8 w-8 p-0 border rounded-md flex items-center justify-center ${
