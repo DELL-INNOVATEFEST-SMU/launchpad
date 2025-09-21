@@ -267,18 +267,10 @@ export default function CoPilotSamantha({
     }
   };
 
-  // Floating toggle button when sidebar is closed
+  // Don't render anything when sidebar is closed
+  // The parent component (case-assistant) handles the toggle button
   if (!isOpen) {
-    return (
-      <button
-        onClick={onToggle}
-        className="fixed right-4 top-20 z-50 p-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-        title="Open Co-Pilot Samantha"
-        aria-label="Open AI assistant"
-      >
-        <MessageSquare className="h-6 w-6" />
-      </button>
-    );
+    return null;
   }
 
   const selectedModelInfo = modelConfig?.availableModels.find(
