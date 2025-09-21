@@ -1,23 +1,44 @@
-"use client"
+"use client";
 
-import React, { useState, useRef } from "react"
-import Navbar from '../../components/Navbar';
-import { Bold, Italic, List, Mic, MicOff, Save, Download, Type } from "lucide-react"
+import React, { useState, useRef } from "react";
+import Navbar from "../../components/Navbar";
+import {
+  Bold,
+  Italic,
+  List,
+  Mic,
+  MicOff,
+  Save,
+  Download,
+  Type,
+  Info,
+} from "lucide-react";
 
 interface NoteSection {
-  id: string
-  title: string
-  content: string
-  isRecording: boolean
+  id: string;
+  title: string;
+  content: string;
+  isRecording: boolean;
+  infoText?: string;
 }
 
 export default function CaseWriter() {
   const [sections, setSections] = useState<NoteSection[]>([
     {
+      id: "general-session-notes",
+      title: "General Session Notes",
+      content: "",
+      isRecording: false,
+      infoText:
+        "- Concise descriptions of issues, facts, significant observations and risk assessments, if any\n- Problem definition and genogram for initial sessions\n- Interventions, actions and any referrals made in session\n- Case conference notes, if any",
+    },
+    {
       id: "session-evaluation",
       title: "Session Evaluation / Action Plans",
       content: "",
       isRecording: false,
+      infoText:
+        "Session Evaluation\n- Message or task for client and any follow up\n- Outcomes or decisions at end of session",
     },
     {
       id: "intervention-plan",
@@ -25,128 +46,151 @@ export default function CaseWriter() {
       content: "",
       isRecording: false,
     },
-  ])
+  ]);
 
-  const [activeSection, setActiveSection] = useState<string>("session-evaluation")
-  const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>({})
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
+  const [activeSection, setActiveSection] = useState<string>(
+    "general-session-notes"
+  );
+  const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null);
+  const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>(
+    {}
+  );
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   const updateSectionContent = (sectionId: string, content: string) => {
-    setSections((prev) => prev.map((section) => (section.id === sectionId ? { ...section, content } : section)))
-  }
+    setSections((prev) =>
+      prev.map((section) =>
+        section.id === sectionId ? { ...section, content } : section
+      )
+    );
+  };
 
   const formatText = (format: "bold" | "italic" | "list") => {
-    const textarea = textareaRefs.current[activeSection]
-    if (!textarea) return
+    const textarea = textareaRefs.current[activeSection];
+    if (!textarea) return;
 
-    const start = textarea.selectionStart
-    const end = textarea.selectionEnd
-    const selectedText = textarea.value.substring(start, end)
-    const beforeText = textarea.value.substring(0, start)
-    const afterText = textarea.value.substring(end)
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = textarea.value.substring(start, end);
+    const beforeText = textarea.value.substring(0, start);
+    const afterText = textarea.value.substring(end);
 
-    let formattedText = ""
+    let formattedText = "";
 
     switch (format) {
       case "bold":
-        formattedText = selectedText ? `**${selectedText}**` : "**bold text**"
-        break
+        formattedText = selectedText ? `**${selectedText}**` : "**bold text**";
+        break;
       case "italic":
-        formattedText = selectedText ? `*${selectedText}*` : "*italic text*"
-        break
+        formattedText = selectedText ? `*${selectedText}*` : "*italic text*";
+        break;
       case "list":
         formattedText = selectedText
           ? selectedText
               .split("\n")
               .map((line) => `• ${line}`)
               .join("\n")
-          : "• List item"
-        break
+          : "• List item";
+        break;
     }
 
-    const newContent = beforeText + formattedText + afterText
-    updateSectionContent(activeSection, newContent)
+    const newContent = beforeText + formattedText + afterText;
+    updateSectionContent(activeSection, newContent);
 
     // Focus and set cursor position
     setTimeout(() => {
-      textarea.focus()
-      const newCursorPos = start + formattedText.length
-      textarea.setSelectionRange(newCursorPos, newCursorPos)
-    }, 0)
-  }
+      textarea.focus();
+      const newCursorPos = start + formattedText.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
 
   const startRecording = async (sectionId: string) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaRecorderRef.current = new MediaRecorder(stream)
-      chunksRef.current = []
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream);
+      chunksRef.current = [];
 
       mediaRecorderRef.current.ondataavailable = (event) => {
         if (event.data.size > 0) {
-          chunksRef.current.push(event.data)
+          chunksRef.current.push(event.data);
         }
-      }
+      };
 
       mediaRecorderRef.current.onstop = () => {
-        const blob = new Blob(chunksRef.current, { type: "audio/wav" })
+        const blob = new Blob(chunksRef.current, { type: "audio/wav" });
         // Here you would typically send the blob to a transcription service
         // For now, we'll just add a placeholder
-        const currentContent = sections.find((s) => s.id === sectionId)?.content || ""
-        const timestamp = new Date().toLocaleTimeString()
+        const currentContent =
+          sections.find((s) => s.id === sectionId)?.content || "";
+        const timestamp = new Date().toLocaleTimeString();
         updateSectionContent(
           sectionId,
-          currentContent + `\n\n[Voice Recording - ${timestamp}]\n[Transcription would appear here]\n`,
-        )
+          currentContent +
+            `\n\n[Voice Recording - ${timestamp}]\n[Transcription would appear here]\n`
+        );
 
         // Clean up
-        stream.getTracks().forEach((track) => track.stop())
-      }
+        stream.getTracks().forEach((track) => track.stop());
+      };
 
-      mediaRecorderRef.current.start()
+      mediaRecorderRef.current.start();
       setSections((prev) =>
         prev.map((section) =>
-          section.id === sectionId ? { ...section, isRecording: true } : { ...section, isRecording: false },
-        ),
-      )
+          section.id === sectionId
+            ? { ...section, isRecording: true }
+            : { ...section, isRecording: false }
+        )
+      );
     } catch (error) {
-      console.error("Error starting recording:", error)
+      console.error("Error starting recording:", error);
     }
-  }
+  };
 
   const stopRecording = (sectionId: string) => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      mediaRecorderRef.current.stop()
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
+      mediaRecorderRef.current.stop();
     }
     setSections((prev) =>
-      prev.map((section) => (section.id === sectionId ? { ...section, isRecording: false } : section)),
-    )
-  }
+      prev.map((section) =>
+        section.id === sectionId ? { ...section, isRecording: false } : section
+      )
+    );
+  };
 
   const saveNotes = () => {
     const notesData = {
       timestamp: new Date().toISOString(),
       sections: sections,
-    }
-    localStorage.setItem("session-notes", JSON.stringify(notesData))
+    };
+    localStorage.setItem("session-notes", JSON.stringify(notesData));
     // You could also implement cloud saving here
-  }
+  };
 
   const exportNotes = () => {
     const notesText = sections
-      .map((section) => `${section.title}\n${"=".repeat(section.title.length)}\n\n${section.content}\n\n`)
-      .join("")
+      .map(
+        (section) =>
+          `${section.title}\n${"=".repeat(section.title.length)}\n\n${
+            section.content
+          }\n\n`
+      )
+      .join("");
 
-    const blob = new Blob([notesText], { type: "text/plain" })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    a.download = `session-notes-${new Date().toISOString().split("T")[0]}.txt`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-  }
+    const blob = new Blob([notesText], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `session-notes-${new Date().toISOString().split("T")[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -204,32 +248,66 @@ export default function CaseWriter() {
             </div>
 
             {/* Note Sections */}
-            <div className="grid gap-8 lg:grid-cols-2">
+            <div className="grid gap-8 lg:grid-cols-2 xl:grid-cols-3">
               {sections.map((section) => (
-                <div key={section.id} className="bg-white rounded-lg border border-gray-200">
+                <div
+                  key={section.id}
+                  className="bg-white rounded-lg border border-gray-200"
+                >
                   <div className="p-4 border-b border-gray-200 bg-blue-50">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-black">{section.title}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-medium text-black">
+                          {section.title}
+                        </h3>
+                        {section.infoText && (
+                          <div className="relative">
+                            <button
+                              onMouseEnter={() => setHoveredTooltip(section.id)}
+                              onMouseLeave={() => setHoveredTooltip(null)}
+                              className="h-5 w-5 p-0 text-gray-400 hover:text-gray-600 flex items-center justify-center"
+                            >
+                              <Info className="h-4 w-4" />
+                            </button>
+                            {hoveredTooltip === section.id && (
+                              <div className="absolute left-0 top-6 z-10 w-80 p-3 bg-gray-900 text-white text-sm rounded-lg shadow-lg">
+                                <div className="whitespace-pre-line">
+                                  {section.infoText}
+                                </div>
+                                <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-900 rotate-45"></div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setActiveSection(section.id)}
                           className={`h-8 w-8 p-0 border rounded-md flex items-center justify-center ${
                             activeSection === section.id
-                              ? 'bg-blue-500 text-white border-blue-500'
-                              : 'bg-white border-gray-200 hover:bg-gray-50'
+                              ? "bg-blue-500 text-white border-blue-500"
+                              : "bg-white border-gray-200 hover:bg-gray-50"
                           }`}
                         >
                           <Type className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => (section.isRecording ? stopRecording(section.id) : startRecording(section.id))}
+                          onClick={() =>
+                            section.isRecording
+                              ? stopRecording(section.id)
+                              : startRecording(section.id)
+                          }
                           className={`h-8 w-8 p-0 border rounded-md flex items-center justify-center ${
                             section.isRecording
-                              ? 'bg-red-500 text-white border-red-500'
-                              : 'bg-white border-gray-200 hover:bg-gray-50'
+                              ? "bg-red-500 text-white border-red-500"
+                              : "bg-white border-gray-200 hover:bg-gray-50"
                           }`}
                         >
-                          {section.isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                          {section.isRecording ? (
+                            <MicOff className="h-4 w-4" />
+                          ) : (
+                            <Mic className="h-4 w-4" />
+                          )}
                         </button>
                       </div>
                     </div>
@@ -237,10 +315,12 @@ export default function CaseWriter() {
                   <div className="p-4">
                     <textarea
                       ref={(el) => {
-                        textareaRefs.current[section.id] = el
+                        textareaRefs.current[section.id] = el;
                       }}
                       value={section.content}
-                      onChange={(e) => updateSectionContent(section.id, e.target.value)}
+                      onChange={(e) =>
+                        updateSectionContent(section.id, e.target.value)
+                      }
                       onFocus={() => setActiveSection(section.id)}
                       placeholder={`Enter your ${section.title.toLowerCase()} here...`}
                       className="w-full min-h-[300px] resize-none border-0 p-0 focus:outline-none focus:ring-0 bg-transparent"
@@ -264,5 +344,5 @@ export default function CaseWriter() {
         </div>
       </div>
     </div>
-  )
+  );
 }
