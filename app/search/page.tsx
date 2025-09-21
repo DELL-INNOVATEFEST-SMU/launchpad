@@ -99,70 +99,95 @@ export default function SubredditScraper() {
 
   // Generate unique session ID
   const generateSessionId = () => {
-    return `chat-session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `chat-session-${Date.now()}-${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
   };
 
   // Save chat session to localStorage
-  const saveChatSession = (messages: ChatMessage[], currentSessionId: string) => {
+  const saveChatSession = (
+    messages: ChatMessage[],
+    currentSessionId: string
+  ) => {
     try {
       const sessionData = {
         id: currentSessionId,
         messages: messages,
         timestamp: new Date().toISOString(),
-        lastActive: new Date().toISOString()
+        lastActive: new Date().toISOString(),
       };
-      localStorage.setItem(`jina-chat-${currentSessionId}`, JSON.stringify(sessionData));
-      
+      localStorage.setItem(
+        `jina-chat-${currentSessionId}`,
+        JSON.stringify(sessionData)
+      );
+
       // Also maintain a list of all sessions
-      const existingSessions = JSON.parse(localStorage.getItem('jina-chat-sessions') || '[]');
-      const sessionIndex = existingSessions.findIndex((s: { id: string }) => s.id === currentSessionId);
-      
+      const existingSessions = JSON.parse(
+        localStorage.getItem("jina-chat-sessions") || "[]"
+      );
+      const sessionIndex = existingSessions.findIndex(
+        (s: { id: string }) => s.id === currentSessionId
+      );
+
       if (sessionIndex >= 0) {
         existingSessions[sessionIndex] = {
           id: currentSessionId,
           timestamp: sessionData.timestamp,
           lastActive: sessionData.lastActive,
-          messageCount: messages.length
+          messageCount: messages.length,
         };
       } else {
         existingSessions.push({
           id: currentSessionId,
           timestamp: sessionData.timestamp,
           lastActive: sessionData.lastActive,
-          messageCount: messages.length
+          messageCount: messages.length,
         });
       }
-      
-      localStorage.setItem('jina-chat-sessions', JSON.stringify(existingSessions));
+
+      localStorage.setItem(
+        "jina-chat-sessions",
+        JSON.stringify(existingSessions)
+      );
     } catch (error) {
-      console.warn('Failed to save chat session:', error);
+      console.warn("Failed to save chat session:", error);
     }
   };
 
   // Load chat session from localStorage
-  const loadChatSession = useCallback((sessionIdToLoad: string): ChatMessage[] => {
-    try {
-      const sessionData = localStorage.getItem(`jina-chat-${sessionIdToLoad}`);
-      if (sessionData) {
-        const parsed = JSON.parse(sessionData);
-        return parsed.messages || [];
+  const loadChatSession = useCallback(
+    (sessionIdToLoad: string): ChatMessage[] => {
+      try {
+        const sessionData = localStorage.getItem(
+          `jina-chat-${sessionIdToLoad}`
+        );
+        if (sessionData) {
+          const parsed = JSON.parse(sessionData);
+          return parsed.messages || [];
+        }
+      } catch (error) {
+        console.warn("Failed to load chat session:", error);
       }
-    } catch (error) {
-      console.warn('Failed to load chat session:', error);
-    }
-    return [];
-  }, []);
+      return [];
+    },
+    []
+  );
 
   // Get or create current session
   const getCurrentSession = useCallback((): string => {
     // Try to get the last active session
-    const sessions = JSON.parse(localStorage.getItem('jina-chat-sessions') || '[]');
+    const sessions = JSON.parse(
+      localStorage.getItem("jina-chat-sessions") || "[]"
+    );
     if (sessions.length > 0) {
       // Sort by last active and return the most recent
-      sessions.sort((a: { lastActive: string }, b: { lastActive: string }) => new Date(b.lastActive).getTime() - new Date(a.lastActive).getTime());
+      sessions.sort(
+        (a: { lastActive: string }, b: { lastActive: string }) =>
+          new Date(b.lastActive).getTime() - new Date(a.lastActive).getTime()
+      );
       return sessions[0].id;
     }
-    
+
     // Create new session if none exists
     return generateSessionId();
   }, []);
@@ -172,7 +197,7 @@ export default function SubredditScraper() {
     const initializeSession = () => {
       const currentSessionId = getCurrentSession();
       setSessionId(currentSessionId);
-      
+
       // Load existing messages for this session
       const savedMessages = loadChatSession(currentSessionId);
       if (savedMessages.length > 0) {
@@ -383,18 +408,24 @@ export default function SubredditScraper() {
       console.error("Chat error:", error);
       setChatError("Failed to get response. Please try again.");
       setStreamingStatus("");
-      
+
       // Mark any streaming message as failed and save state
       setChatMessages((prev) => {
         const updatedMessages = prev.map((msg) =>
-          msg.isStreaming ? { ...msg, isStreaming: false, content: msg.content + "\n\n⚠️ Stream interrupted" } : msg
+          msg.isStreaming
+            ? {
+                ...msg,
+                isStreaming: false,
+                content: msg.content + "\n\n⚠️ Stream interrupted",
+              }
+            : msg
         );
-        
+
         // Save the updated state
         if (sessionId) {
           saveChatSession(updatedMessages, sessionId);
         }
-        
+
         return updatedMessages;
       });
     } finally {
@@ -419,17 +450,24 @@ export default function SubredditScraper() {
   const clearChat = () => {
     setChatMessages([]);
     setChatError(null);
-    
+
     // Clear from localStorage and start new session
     if (sessionId) {
       localStorage.removeItem(`jina-chat-${sessionId}`);
-      
+
       // Remove from sessions list
-      const sessions = JSON.parse(localStorage.getItem('jina-chat-sessions') || '[]');
-      const filteredSessions = sessions.filter((s: { id: string }) => s.id !== sessionId);
-      localStorage.setItem('jina-chat-sessions', JSON.stringify(filteredSessions));
+      const sessions = JSON.parse(
+        localStorage.getItem("jina-chat-sessions") || "[]"
+      );
+      const filteredSessions = sessions.filter(
+        (s: { id: string }) => s.id !== sessionId
+      );
+      localStorage.setItem(
+        "jina-chat-sessions",
+        JSON.stringify(filteredSessions)
+      );
     }
-    
+
     // Generate new session
     const newSessionId = generateSessionId();
     setSessionId(newSessionId);
@@ -521,7 +559,7 @@ export default function SubredditScraper() {
                     The AI Voyager
                   </h2>
                 </div>
-                
+
                 {/* Session indicator and controls */}
                 <div className="flex items-center gap-2 text-sm text-gray-500">
                   <div className="flex items-center gap-1">
@@ -535,7 +573,7 @@ export default function SubredditScraper() {
                   )}
                 </div>
               </div>
-              
+
               <p className="text-gray-600">
                 Get AI-powered insights on where to find and connect with
                 Singapore youths in digital spaces. Ask about online
