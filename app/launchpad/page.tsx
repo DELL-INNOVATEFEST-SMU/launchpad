@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import type { JSX } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { Search, ChevronDown, Calendar } from "lucide-react"
+import { Search, ChevronDown, Calendar } from "lucide-react";
+import Navbar from '../../components/Navbar';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -38,15 +39,9 @@ const SEVERITY_COLORS: Record<number, string> = {
     '-5': "bg-red-600",
 };
 
-interface SubredditInput {
-    name: string;
-    numPosts: number | "";
-}
 
 export default function StartingPointAggregator() {
     const [data, setData] = useState<Row[]>([]);
-    const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState(false);
     const [search, setSearch] = useState('');
     const [platform, setPlatform] = useState('');
     const [severity, setSeverity] = useState<number | ''>('');
@@ -55,78 +50,11 @@ export default function StartingPointAggregator() {
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(false);
     const [pageGroup, setPageGroup] = useState(1);
-    const [inputs, setInputs] = useState<SubredditInput[]>([
-        { name: "", numPosts: "" },
-    ]);
 
-    const handleNameChange = (index: number, value: string) => {
-        const newInputs = [...inputs];
-        newInputs[index].name = value;
-        setInputs(newInputs);
-    };
-
-    const handleNumPostsChange = (index: number, value: string) => {
-        const newInputs = [...inputs];
-        // Only allow numbers or empty string to allow clearing field
-        newInputs[index].numPosts = value === "" ? "" : Number(value);
-        setInputs(newInputs);
-    };
-
-    const addInputRow = () => {
-        setInputs((prev) => [...prev, { name: "", numPosts: "" }]);
-    };
-    const handleSubmit = async () => {
-        setLoading(true);
-        setError(null);
-        setSuccess(false);
-
-        // Filter out rows with empty name or invalid numPosts
-        const validInputs = inputs.filter(
-            ({ name, numPosts }) => name.trim() && numPosts && numPosts > 0
-        );
-
-        if (validInputs.length === 0) {
-            setError("Please enter at least one valid subreddit and number of posts.");
-            setLoading(false);
-            return;
-        }
-        const payload = {
-            subreddits: validInputs.reduce<Record<string, number>>((acc, cur) => {
-                acc[cur.name.trim()] = cur.numPosts as number;
-                return acc;
-            }, {}),
-        };
-
-        try {
-            console.log("Submitting payload:", payload);
-            const response = await fetch("http://localhost:8000/scrape", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server error: ${response.statusText}`);
-            }
-
-            setSuccess(true);
-            window.location.reload();
-        } catch (err: unknown) {
-            setError(
-                typeof err === "object" && err !== null && "message" in err
-                    ? String((err as { message?: unknown }).message)
-                    : "Unknown error"
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const fetchData = async () => {
         setLoading(true);
-        let query = supabase.from('messages').scelect('*', { count: 'exact' }).order('timestamp', { ascending: false });
+        let query = supabase.from('messages').select('*', { count: 'exact' }).order('timestamp', { ascending: false });
 
         if (search) query = query.ilike('username', `%${search}%`);
         if (platform) query = query.eq('source', platform);
@@ -207,14 +135,15 @@ export default function StartingPointAggregator() {
 
 
     return (
-        <div className="min-h-screen flex flex-col px-6 py-8">
-            <div className="w-full flex-1 p-8">
-                <div className="flex justify-between items-center mb-6">
-                    <h2 className="text-2xl font-bold text-black">Space Craft</h2>
-                    {/* <h2 className="text-2xl font-bold text-black">Mission Reachout</h2> */}
+        <div className="min-h-screen flex flex-col">
+            <Navbar />
+            <div className="flex-1 px-6 py-8">
+                <div className="w-full flex-1 p-8">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-2xl font-bold text-black">All Posts</h2>
+                        {/* <h2 className="text-2xl font-bold text-black">Mission Reachout</h2> */}
 
-                    <div className="text-gray-400">SAMH Staff Portal</div>
-                </div>
+                    </div>
 
                 {/* filter */}
                 <div className="flex gap-4 mb-6 bg-gray-50 px-6 py-4 rounded-lg items-center">
@@ -250,8 +179,8 @@ export default function StartingPointAggregator() {
                             onChange={e => setSeverity(e.target.value === '' ? '' : Number(e.target.value))}
                         >
                             <option value="">Severity</option>
-                            {[5, 4, 3, 2, 1].map(s => (
-                                <option value={s} key={s}>{s}</option>
+                            {[-1, -2, -3, -4, -5].map(s => (
+                                <option value={s} key={s}>{Math.abs(s)}</option>
                             ))}
                         </select>
                         <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
@@ -374,7 +303,7 @@ export default function StartingPointAggregator() {
                                                 row.score <= -1 ? 'bg-blue-500' :
                                                 'bg-green-500'
                                             }`}>
-                                                {row.score}
+                                                {Math.abs(row.score)}
                                             </span>
                                         </td>
 
@@ -486,49 +415,8 @@ export default function StartingPointAggregator() {
         Showing {PAGE_SIZE * (page - 1) + 1} to {Math.min(page * PAGE_SIZE, total)} of {total} results
     </span>
 </div>
+                </div>
             </div>
-
-            <div className="max-w-xl mx-auto p-4 space-y-4">
-                {inputs.map((input, index) => (
-                    <div key={index} className="flex space-x-4 items-center">
-                        <input
-                            type="text"
-                            placeholder="Subreddit name"
-                            className="flex-1 border border-gray-300 rounded px-3 py-2"
-                            value={input.name}
-                            onChange={(e) => handleNameChange(index, e.target.value)}
-                        />
-                        <input
-                            type="number"
-                            placeholder="Number of posts"
-                            min={1}
-                            className="w-36 border border-gray-300 rounded px-3 py-2"
-                            value={input.numPosts === "" ? "" : input.numPosts}
-                            onChange={(e) => handleNumPostsChange(index, e.target.value)}
-                        />
-                    </div>
-                ))}
-
-                <button
-                    onClick={addInputRow}
-                    className="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-2"
-                >
-                    + Add another subreddit
-                </button>
-            </div>
-            <div className="pt-4">
-                <button
-                    onClick={handleSubmit}
-                    className="bg-green-600 hover:bg-green-700 text-white rounded px-6 py-2 disabled:opacity-50"
-                    disabled={loading}
-                    type="button"
-                >
-                    {loading ? "Submitting..." : "Submit"}
-                </button>
-            </div>
-
-            {error && <div className="text-red-500 mt-2">{error}</div>}
-            {success && <div className="text-green-500 mt-2">Submitted successfully!</div>}
         </div>
     );
 }
