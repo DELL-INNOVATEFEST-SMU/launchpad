@@ -222,7 +222,7 @@ export default function CaseWriter() {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <div className="flex-1 flex">
+      <div className="flex-1 flex h-full">
         <div className="flex-1 px-6 py-8">
           <div className="w-full flex-1 p-8">
             <div className="flex justify-between items-center mb-6">
