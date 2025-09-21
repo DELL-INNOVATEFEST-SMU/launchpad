@@ -42,15 +42,15 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
     // Simulate NPU processing delay (typically faster than cloud APIs)
     await new Promise(resolve => setTimeout(resolve, 800))
 
-    // Enhanced system context for local model
-    const systemContext = `You are Co-Pilot Samantha, a specialized AI assistant for mental health professionals.
-You're running locally on NPU for maximum privacy and speed.
-
-Current session context:
-- Active section: ${context?.currentSection || "General Notes"}
-- Case notes available: ${context?.caseNotes ? "Yes" : "No"}
-
-${context?.caseNotes ? `Case context:\n${context.caseNotes}\n\n` : ""}`
+    // Enhanced system context for local model (available for future use)
+    // const systemContext = `You are Co-Pilot Samantha, a specialized AI assistant for mental health professionals.
+    // You're running locally on NPU for maximum privacy and speed.
+    //
+    // Current session context:
+    // - Active section: ${context?.currentSection || "General Notes"}
+    // - Case notes available: ${context?.caseNotes ? "Yes" : "No"}
+    //
+    // ${context?.caseNotes ? `Case context:\n${context.caseNotes}\n\n` : ""}`
 
     // Simulate intelligent local NPU response
     const userQuery = lastMessage.content.toLowerCase()
