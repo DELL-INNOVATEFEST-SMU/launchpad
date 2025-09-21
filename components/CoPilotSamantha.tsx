@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
+import Image from "next/image";
 import {
-  MessageSquare,
   X,
   Send,
   Bot,
@@ -90,6 +90,7 @@ export default function CoPilotSamantha({
   // Load model configuration on mount
   useEffect(() => {
     fetchModelConfig();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Auto-scroll to bottom when new messages arrive
@@ -395,9 +396,15 @@ export default function CoPilotSamantha({
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {messages.length === 0 && (
               <div className="text-center text-gray-500 py-8">
-                <Bot className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <Image
+                  src="/co_pilot_samantha.png"
+                  alt="Co-Pilot Samantha"
+                  width={48}
+                  height={48}
+                  className="mx-auto mb-3 rounded-full"
+                />
                 <p className="text-sm font-medium">
-                  Hi! I'm Co-Pilot Samantha.
+                  Hi! I&apos;m Co-Pilot Samantha.
                 </p>
                 <p className="text-xs mt-1">
                   Your AI assistant for case management.
