@@ -9,12 +9,10 @@ const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 interface SurveyQuery {
   search?: string;
   phqBand?: string;
-  dominantFlavor?: string;
   planetName?: string;
   nationality?: string;
-  referral?: string;
   source?: string;
-  date?: string;
+  dateBefore?: string;
   page?: number;
   pageSize?: number;
 }
@@ -30,12 +28,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const query: SurveyQuery = {
       search: searchParams.get("search") || undefined,
       phqBand: searchParams.get("phqBand") || undefined,
-      dominantFlavor: searchParams.get("dominantFlavor") || undefined,
       planetName: searchParams.get("planetName") || undefined,
       nationality: searchParams.get("nationality") || undefined,
-      referral: searchParams.get("referral") || undefined,
       source: searchParams.get("source") || undefined,
-      date: searchParams.get("date") || undefined,
+      dateBefore: searchParams.get("dateBefore") || undefined,
       page: searchParams.get("page") ? Number(searchParams.get("page")) : 1,
       pageSize: searchParams.get("pageSize") ? Number(searchParams.get("pageSize")) : 10,
     };
@@ -52,30 +48,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     if (query.phqBand) {
       supabaseQuery = supabaseQuery.eq("phq_band", query.phqBand);
     }
-    if (query.dominantFlavor) {
-      supabaseQuery = supabaseQuery.eq("dominant_flavor", query.dominantFlavor);
-    }
     if (query.planetName) {
       supabaseQuery = supabaseQuery.eq("planet_name", query.planetName);
     }
     if (query.nationality) {
-      supabaseQuery = supabaseQuery.eq("nationality", query.nationality);
-    }
-    if (query.referral) {
-      supabaseQuery = supabaseQuery.eq("referral", query.referral);
+      if (query.nationality === "SG") {
+        supabaseQuery = supabaseQuery.eq("nationality", "SG");
+      } else if (query.nationality === "Others") {
+        supabaseQuery = supabaseQuery.neq("nationality", "SG");
+      }
     }
     if (query.source) {
       supabaseQuery = supabaseQuery.eq("source", query.source);
     }
-    if (query.date) {
-      const start = new Date(query.date);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(query.date);
-      end.setHours(23, 59, 59, 999);
-
-      supabaseQuery = supabaseQuery
-        .gte("created_at", start.toISOString())
-        .lte("created_at", end.toISOString());
+    if (query.dateBefore) {
+      const beforeDate = new Date(query.dateBefore);
+      beforeDate.setHours(23, 59, 59, 999);
+      supabaseQuery = supabaseQuery.lte("created_at", beforeDate.toISOString());
     }
 
     // Apply pagination

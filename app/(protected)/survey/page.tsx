@@ -43,12 +43,10 @@ export default function SurveyRespondents() {
   const [data, setData] = useState<SurveyRow[]>([]);
   const [search, setSearch] = useState("");
   const [phqBand, setPhqBand] = useState("");
-  const [dominantFlavor, setDominantFlavor] = useState("");
   const [planetName, setPlanetName] = useState("");
   const [nationality, setNationality] = useState("");
-  const [referral, setReferral] = useState("");
   const [source, setSource] = useState("");
-  const [date, setDate] = useState("");
+  const [dateBefore, setDateBefore] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -67,12 +65,10 @@ export default function SurveyRespondents() {
 
       if (search) params.append("search", search);
       if (phqBand) params.append("phqBand", phqBand);
-      if (dominantFlavor) params.append("dominantFlavor", dominantFlavor);
       if (planetName) params.append("planetName", planetName);
       if (nationality) params.append("nationality", nationality);
-      if (referral) params.append("referral", referral);
       if (source) params.append("source", source);
-      if (date) params.append("date", date);
+      if (dateBefore) params.append("dateBefore", dateBefore);
 
       const response = await fetch(`/api/survey?${params.toString()}`);
 
@@ -91,17 +87,7 @@ export default function SurveyRespondents() {
     } finally {
       setLoading(false);
     }
-  }, [
-    search,
-    phqBand,
-    dominantFlavor,
-    planetName,
-    nationality,
-    referral,
-    source,
-    date,
-    page,
-  ]);
+  }, [search, phqBand, planetName, nationality, source, dateBefore, page]);
 
   useEffect(() => {
     fetchData();
@@ -114,7 +100,6 @@ export default function SurveyRespondents() {
     "moderately-severe",
     "severe",
   ];
-  const dominantFlavors = ["sweet", "sour", "bitter", "salty", "umami"];
   const planetNames = [
     "Mercury",
     "Venus",
@@ -125,32 +110,7 @@ export default function SurveyRespondents() {
     "Uranus",
     "Neptune",
   ];
-  const nationalities = [
-    "US",
-    "UK",
-    "CA",
-    "AU",
-    "DE",
-    "FR",
-    "IT",
-    "ES",
-    "NL",
-    "SE",
-    "NO",
-    "DK",
-    "FI",
-    "Other",
-  ];
-  const referrals = [
-    "google",
-    "facebook",
-    "instagram",
-    "twitter",
-    "linkedin",
-    "reddit",
-    "friend",
-    "other",
-  ];
+  const nationalities = ["SG", "Others"];
   const sources = [
     "cosmic-compass-react",
     "cosmic-compass-web",
@@ -227,23 +187,6 @@ export default function SurveyRespondents() {
     }
   };
 
-  const getFlavorColor = (flavor: string) => {
-    switch (flavor) {
-      case "sweet":
-        return "bg-pink-100 text-pink-800 border-pink-200";
-      case "sour":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200";
-      case "bitter":
-        return "bg-gray-100 text-gray-800 border-gray-200";
-      case "salty":
-        return "bg-blue-100 text-blue-800 border-blue-200";
-      case "umami":
-        return "bg-purple-100 text-purple-800 border-purple-200";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200";
-    }
-  };
-
   return (
     <div className="min-h-screen flex flex-col">
       <div className="flex-1 px-6 py-8">
@@ -255,7 +198,7 @@ export default function SurveyRespondents() {
           </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 bg-gray-50 px-6 py-4 rounded-lg">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 bg-gray-50 px-6 py-4 rounded-lg">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
@@ -278,22 +221,6 @@ export default function SurveyRespondents() {
                   <option value={band} key={band}>
                     {band.charAt(0).toUpperCase() +
                       band.slice(1).replace("-", " ")}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-            </div>
-
-            <div className="relative">
-              <select
-                className="appearance-none bg-white border border-gray-200 rounded-md px-4 py-2 pr-8 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
-                value={dominantFlavor}
-                onChange={(e) => setDominantFlavor(e.target.value)}
-              >
-                <option value="">Dominant Flavor</option>
-                {dominantFlavors.map((flavor) => (
-                  <option value={flavor} key={flavor}>
-                    {flavor.charAt(0).toUpperCase() + flavor.slice(1)}
                   </option>
                 ))}
               </select>
@@ -335,22 +262,6 @@ export default function SurveyRespondents() {
             <div className="relative">
               <select
                 className="appearance-none bg-white border border-gray-200 rounded-md px-4 py-2 pr-8 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
-                value={referral}
-                onChange={(e) => setReferral(e.target.value)}
-              >
-                <option value="">Referral Source</option>
-                {referrals.map((ref) => (
-                  <option value={ref} key={ref}>
-                    {ref.charAt(0).toUpperCase() + ref.slice(1)}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
-            </div>
-
-            <div className="relative">
-              <select
-                className="appearance-none bg-white border border-gray-200 rounded-md px-4 py-2 pr-8 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
               >
@@ -372,8 +283,9 @@ export default function SurveyRespondents() {
               <input
                 type="date"
                 className="bg-white border border-gray-200 rounded-md px-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent w-full"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                value={dateBefore}
+                onChange={(e) => setDateBefore(e.target.value)}
+                placeholder="Before date"
               />
               <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
             </div>
@@ -397,10 +309,10 @@ export default function SurveyRespondents() {
                     PHQ Results
                   </th>
                   <th className="py-3 px-4 text-left border-r border-gray-200">
-                    Planet & Flavor
+                    Planet
                   </th>
                   <th className="py-3 px-4 text-left border-r border-gray-200">
-                    Source & Referral
+                    Source
                   </th>
                   <th className="py-3 px-4 text-left">Outreach Status</th>
                 </tr>
@@ -537,36 +449,20 @@ export default function SurveyRespondents() {
                         </div>
                       </td>
 
-                      {/* Planet & Flavor Column */}
+                      {/* Planet Column */}
                       <td className="py-4 px-4 border-r border-gray-200">
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-1">
-                            <span className="text-sm font-medium text-gray-700">
-                              {row.planet_name}
-                            </span>
-                          </div>
-                          <span
-                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getFlavorColor(
-                              row.dominant_flavor
-                            )}`}
-                          >
-                            {row.dominant_flavor.charAt(0).toUpperCase() +
-                              row.dominant_flavor.slice(1)}
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm font-medium text-gray-700">
+                            {row.planet_name}
                           </span>
                         </div>
                       </td>
 
-                      {/* Source & Referral Column */}
+                      {/* Source Column */}
                       <td className="py-4 px-4 border-r border-gray-200">
-                        <div className="space-y-1">
-                          <div className="text-xs text-gray-600">
-                            <span className="font-medium">Source:</span>{" "}
-                            {row.source.replace("cosmic-compass-", "")}
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            <span className="font-medium">Referral:</span>{" "}
-                            {row.referral}
-                          </div>
+                        <div className="text-xs text-gray-600">
+                          <span className="font-medium">Source:</span>{" "}
+                          {row.source.replace("cosmic-compass-", "")}
                         </div>
                       </td>
 
