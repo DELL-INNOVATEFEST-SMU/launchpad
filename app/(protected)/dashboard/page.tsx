@@ -1,20 +1,13 @@
-import { redirect } from "next/navigation";
-import { checkAdminAuth, adminLogout } from "@/app/actions/admin-auth";
+import { adminLogout } from "@/app/actions/admin-auth";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 /**
  * Admin Dashboard Page
  * Protected route that requires admin authentication
+ * Authentication is handled by the protected layout
  */
 export default async function AdminDashboard() {
-  // Check if user is authenticated as admin
-  const isAuthenticated = await checkAdminAuth();
-
-  if (!isAuthenticated) {
-    redirect("/");
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}

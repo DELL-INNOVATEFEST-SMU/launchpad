@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { adminLogin } from "@/app/actions/admin-auth";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LoginFormData {
   email: string;
@@ -26,6 +27,14 @@ export default function AdminLogin() {
     error: null,
   });
   const router = useRouter();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      router.push("/dashboard");
+    }
+  }, [isAuthenticated, authLoading, router]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -56,8 +65,7 @@ export default function AdminLogin() {
       const result = await adminLogin(formData);
 
       if (result.success) {
-        // Store admin session (you might want to use a more secure method)
-        sessionStorage.setItem("admin_authenticated", "true");
+        // Redirect to dashboard - session is handled by server-side cookies
         router.push("/dashboard");
       } else {
         setState((prev) => ({
@@ -74,6 +82,20 @@ export default function AdminLogin() {
       }));
     }
   };
+
+  // Show loading while checking auth status
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Don't render login form if already authenticated (will redirect)
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">

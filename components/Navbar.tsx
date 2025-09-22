@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Database, Search, FileText } from "lucide-react";
+import { Database, Search, FileText, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const { isAuthenticated, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    window.location.href = "/";
+  };
 
   const navItems = [
     {
@@ -63,7 +70,18 @@ export default function Navbar() {
           </div>
         </div>
 
-        <div className="text-sm text-gray-500">SAMH Staff Portal</div>
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-500">SAMH Staff Portal</div>
+          {isAuthenticated && (
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          )}
+        </div>
       </div>
     </nav>
   );
