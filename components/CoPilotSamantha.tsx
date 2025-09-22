@@ -141,9 +141,7 @@ export default function CoPilotSamantha({
     try {
       // Determine endpoint based on selected model
       const endpoint =
-        modelConfig.selectedModel === "local-npu"
-          ? "/api/v1/chat-local"
-          : "/api/v1/chat";
+        modelConfig.selectedModel === "local-npu" ? "/chat" : "/api/v1/chat";
 
       const requestBody: ChatRequest = {
         messages: [...messages, userMessage].map((msg) => ({

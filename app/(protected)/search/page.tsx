@@ -10,9 +10,10 @@ import {
   Sparkles,
   RefreshCw,
   Copy,
+  ExternalLink,
+  Search,
+  Lightbulb,
 } from "lucide-react";
-import Navbar from "../../components/Navbar";
-import { sendJinaMessage } from "../actions/jina-chat";
 
 interface SubredditInput {
   name: string;
@@ -24,40 +25,47 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  isStreaming?: boolean;
-  thinkingSteps?: string[];
+  optimizedPrompt?: string;
 }
 
 interface SuggestedPrompt {
   title: string;
   prompt: string;
   icon: React.ReactNode;
+  description: string;
 }
 
 const suggestedPrompts: SuggestedPrompt[] = [
   {
     title: "Find Youth Communities",
     prompt:
-      "Help me identify online communities and digital spaces where Singapore youths aged 12-19 gather to discuss mental health, share struggles, or seek peer support.",
+      "Find online communities where Singapore youths discuss mental health and seek peer support",
     icon: <Users className="w-4 h-4" />,
+    description:
+      "Discover online spaces where Singapore teens connect and share experiences",
   },
   {
-    title: "Social Media Platforms",
+    title: "Discord Servers",
     prompt:
-      "What are the most popular social media platforms and online spaces used by Singapore teenagers for emotional expression and venting?",
+      "Locate Discord servers for Singapore teens with anxiety and depression",
     icon: <MessageSquare className="w-4 h-4" />,
+    description:
+      "Find Discord communities where teens express emotions and seek support",
   },
   {
-    title: "Gaming & Discord Communities",
+    title: "Gaming Communities",
     prompt:
-      "Identify gaming communities, Discord servers, and online forums popular among Singapore teens where mental health discussions or emotional support naturally occur.",
+      "Find gaming Discord servers and communities popular among Singapore teens with mental health discussions",
     icon: <Sparkles className="w-4 h-4" />,
+    description: "Find gaming and Discord spaces with supportive communities",
   },
   {
-    title: "Reddit & Forum Spaces",
+    title: "Reddit Subreddits",
     prompt:
-      "Find Singapore-specific subreddits and online forums where young people aged 12-19 might share personal struggles, seek advice, or discuss mental health topics.",
+      "Find Singapore-specific subreddits where young people share personal struggles and seek advice",
     icon: <RefreshCw className="w-4 h-4" />,
+    description:
+      "Locate Singapore-focused forums and subreddits for youth support",
   },
 ];
 
@@ -67,7 +75,7 @@ export default function SubredditScraper() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [inputs, setInputs] = useState<SubredditInput[]>([
-    { name: "", numPosts: "" },
+    { name: "", numPosts: 10 },
   ]);
 
   // Chat interface state with persistence
@@ -75,10 +83,20 @@ export default function SubredditScraper() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
-  const [streamingStatus, setStreamingStatus] = useState<string>("");
   const [sessionId, setSessionId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Prompt generation context
+  const [promptContext, setPromptContext] = useState({
+    targetAudience: "Singapore youths aged 12-19",
+    platform: "Any",
+    outreachGoal: "Mental health support",
+    location: "Singapore",
+  });
+
+  // Copy feedback state
+  const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
 
   const handleNameChange = (index: number, value: string) => {
     const newInputs = [...inputs];
@@ -117,13 +135,13 @@ export default function SubredditScraper() {
         lastActive: new Date().toISOString(),
       };
       localStorage.setItem(
-        `jina-chat-${currentSessionId}`,
+        `local-chat-${currentSessionId}`,
         JSON.stringify(sessionData)
       );
 
       // Also maintain a list of all sessions
       const existingSessions = JSON.parse(
-        localStorage.getItem("jina-chat-sessions") || "[]"
+        localStorage.getItem("local-chat-sessions") || "[]"
       );
       const sessionIndex = existingSessions.findIndex(
         (s: { id: string }) => s.id === currentSessionId
@@ -146,7 +164,7 @@ export default function SubredditScraper() {
       }
 
       localStorage.setItem(
-        "jina-chat-sessions",
+        "local-chat-sessions",
         JSON.stringify(existingSessions)
       );
     } catch (error) {
@@ -159,11 +177,16 @@ export default function SubredditScraper() {
     (sessionIdToLoad: string): ChatMessage[] => {
       try {
         const sessionData = localStorage.getItem(
-          `jina-chat-${sessionIdToLoad}`
+          `local-chat-${sessionIdToLoad}`
         );
         if (sessionData) {
           const parsed = JSON.parse(sessionData);
-          return parsed.messages || [];
+          const messages = parsed.messages || [];
+          // Convert timestamp strings back to Date objects
+          return messages.map((msg: ChatMessage & { timestamp: string }) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          }));
         }
       } catch (error) {
         console.warn("Failed to load chat session:", error);
@@ -177,7 +200,7 @@ export default function SubredditScraper() {
   const getCurrentSession = useCallback((): string => {
     // Try to get the last active session
     const sessions = JSON.parse(
-      localStorage.getItem("jina-chat-sessions") || "[]"
+      localStorage.getItem("local-chat-sessions") || "[]"
     );
     if (sessions.length > 0) {
       // Sort by last active and return the most recent
@@ -259,13 +282,16 @@ export default function SubredditScraper() {
 
     try {
       console.log("Submitting payload:", payload);
-      const response = await fetch("http://localhost:8000/scrape", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        "https://reddit-scrapper-smu.apps.innovate.sg-cna.com/scrape",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Server error: ${response.statusText}`);
@@ -301,136 +327,46 @@ export default function SubredditScraper() {
     setChatError(null);
 
     try {
-      // Prepare messages for API
-      const apiMessages = [...chatMessages, userMessage].map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
+      // Call the Jina prompt generator API
+      const response = await fetch("/api/v1/jina-prompt-generator", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userQuery: content,
+          context: promptContext,
+        }),
+      });
 
-      const stream = await sendJinaMessage(apiMessages);
-      const reader = stream.getReader();
-      const decoder = new TextDecoder();
+      if (!response.ok) {
+        throw new Error("Failed to generate prompt");
+      }
 
-      // Create assistant message
+      const promptData = await response.json();
+
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "",
+        content: `## 🎯 Optimized Jina AI Search Prompt
+
+**Your Query:** "${content}"
+
+**Generated Prompt:**
+${promptData.optimizedPrompt}
+
+---
+*Click "Open Jina AI Search" to open Jina AI, then copy and paste the optimized prompt above into the search box.*`,
         timestamp: new Date(),
-        isStreaming: true,
-        thinkingSteps: [],
+        optimizedPrompt: promptData.optimizedPrompt,
       };
 
       setChatMessages((prev) => [...prev, assistantMessage]);
-
-      // Process streaming response with enhanced status updates
-      let accumulatedContent = "";
-      const currentThinkingSteps: string[] = [];
-      let hasStartedContent = false;
-
-      // Set initial streaming status
-      setStreamingStatus("🔍 Searching digital spaces...");
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6).trim();
-            if (data === "[DONE]") continue;
-
-            try {
-              const parsed = JSON.parse(data);
-
-              // Handle different types of streaming data
-              if (parsed.choices?.[0]?.delta?.content) {
-                const content = parsed.choices[0].delta.content;
-                accumulatedContent += content;
-                hasStartedContent = true;
-
-                // Update streaming status based on content length
-                if (!hasStartedContent) {
-                  setStreamingStatus("💭 Analyzing communities...");
-                } else if (accumulatedContent.length < 100) {
-                  setStreamingStatus("✍️ Formulating insights...");
-                } else if (accumulatedContent.length < 500) {
-                  setStreamingStatus("🎯 Identifying platforms...");
-                } else {
-                  setStreamingStatus("📝 Completing response...");
-                }
-
-                setChatMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMessage.id
-                      ? {
-                          ...msg,
-                          content: accumulatedContent,
-                          isStreaming: true,
-                        }
-                      : msg
-                  )
-                );
-              }
-
-              // Handle reasoning steps if provided
-              if (parsed.reasoning_step) {
-                currentThinkingSteps.push(parsed.reasoning_step);
-                setChatMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMessage.id
-                      ? {
-                          ...msg,
-                          thinkingSteps: [...currentThinkingSteps],
-                        }
-                      : msg
-                  )
-                );
-              }
-            } catch (parseError) {
-              console.warn("Failed to parse streaming response:", parseError);
-            }
-          }
-        }
-      }
-
-      // Mark streaming as complete
-      setStreamingStatus("");
-      setChatMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantMessage.id ? { ...msg, isStreaming: false } : msg
-        )
-      );
     } catch (error) {
       console.error("Chat error:", error);
-      setChatError("Failed to get response. Please try again.");
-      setStreamingStatus("");
-
-      // Mark any streaming message as failed and save state
-      setChatMessages((prev) => {
-        const updatedMessages = prev.map((msg) =>
-          msg.isStreaming
-            ? {
-                ...msg,
-                isStreaming: false,
-                content: msg.content + "\n\n⚠️ Stream interrupted",
-              }
-            : msg
-        );
-
-        // Save the updated state
-        if (sessionId) {
-          saveChatSession(updatedMessages, sessionId);
-        }
-
-        return updatedMessages;
-      });
+      setChatError("Failed to generate search prompt. Please try again.");
     } finally {
       setChatLoading(false);
-      setStreamingStatus("");
     }
   };
 
@@ -441,8 +377,20 @@ export default function SubredditScraper() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, itemId?: string) => {
     navigator.clipboard.writeText(text).then(() => {
+      if (itemId) {
+        // Add to copied items set
+        setCopiedItems((prev) => new Set(prev).add(itemId));
+        // Remove after 2 seconds
+        setTimeout(() => {
+          setCopiedItems((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(itemId);
+            return newSet;
+          });
+        }, 2000);
+      }
       console.log("Copied to clipboard");
     });
   };
@@ -453,17 +401,17 @@ export default function SubredditScraper() {
 
     // Clear from localStorage and start new session
     if (sessionId) {
-      localStorage.removeItem(`jina-chat-${sessionId}`);
+      localStorage.removeItem(`local-chat-${sessionId}`);
 
       // Remove from sessions list
       const sessions = JSON.parse(
-        localStorage.getItem("jina-chat-sessions") || "[]"
+        localStorage.getItem("local-chat-sessions") || "[]"
       );
       const filteredSessions = sessions.filter(
         (s: { id: string }) => s.id !== sessionId
       );
       localStorage.setItem(
-        "jina-chat-sessions",
+        "local-chat-sessions",
         JSON.stringify(filteredSessions)
       );
     }
@@ -473,9 +421,14 @@ export default function SubredditScraper() {
     setSessionId(newSessionId);
   };
 
+  const openJinaSearch = (query?: string) => {
+    const baseUrl = "https://search.jina.ai/";
+    const url = query ? `${baseUrl}?q=${encodeURIComponent(query)}` : baseUrl;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
       <div className="flex-1 px-6 py-8">
         <div className="w-full flex-1 p-8">
           <div className="w-full max-w-2xl mx-auto mb-6">
@@ -556,7 +509,7 @@ export default function SubredditScraper() {
                 <div className="flex items-center gap-2">
                   <MessageCircle className="w-6 h-6 text-blue-600" />
                   <h2 className="text-2xl font-bold text-black">
-                    The AI Voyager
+                    DeepSearch Prompt Generator
                   </h2>
                 </div>
 
@@ -584,32 +537,194 @@ export default function SubredditScraper() {
               </p>
             </div>
 
-            {/* Suggested Prompts - Show only when no messages */}
-            {chatMessages.length === 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  Suggested Questions
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {suggestedPrompts.map((prompt, index) => (
+            {/* Jina AI Integration Section */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <Search className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                    AI-Powered Prompt Generator
+                  </h3>
+                  <p className="text-blue-800 text-sm mb-3">
+                    Our AI assistant uses Gemini 2.5 Flash to generate optimized
+                    prompts for Jina AI Deep Search, helping you find the most
+                    relevant online communities and digital spaces for outreach.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
                     <button
-                      key={index}
-                      onClick={() => handleSendMessage(prompt.prompt)}
-                      disabled={chatLoading}
-                      className="text-left p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors disabled:opacity-50"
+                      onClick={() => openJinaSearch()}
+                      className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
                     >
-                      <div className="flex items-center gap-2 mb-2">
-                        {prompt.icon}
-                        <span className="font-medium text-blue-800">
-                          {prompt.title}
-                        </span>
-                      </div>
-                      <p className="text-sm text-blue-700">{prompt.prompt}</p>
+                      <Search className="w-4 h-4" />
+                      Open Jina AI Search
+                      <ExternalLink className="w-3 h-3" />
                     </button>
-                  ))}
+                    <div className="text-xs text-blue-600 flex items-center gap-1">
+                      <Lightbulb className="w-3 h-3" />
+                      <span>
+                        Set reasoning effort to &quot;High&quot; for best
+                        results
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            )}
+            </div>
+
+            {/* Search Context Configuration */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-800 mb-3">Search Context</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Target Audience
+                  </label>
+                  <select
+                    value={promptContext.targetAudience}
+                    onChange={(e) =>
+                      setPromptContext((prev) => ({
+                        ...prev,
+                        targetAudience: e.target.value,
+                      }))
+                    }
+                    className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Singapore youths aged 12-19">
+                      Singapore youths aged 12-19
+                    </option>
+                    <option value="Singapore teens with anxiety">
+                      Singapore teens with anxiety
+                    </option>
+                    <option value="Singapore students with depression">
+                      Singapore students with depression
+                    </option>
+                    <option value="Singapore gaming communities">
+                      Singapore gaming communities
+                    </option>
+                    <option value="Singapore international students">
+                      Singapore international students
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Platform Preference
+                  </label>
+                  <select
+                    value={promptContext.platform}
+                    onChange={(e) =>
+                      setPromptContext((prev) => ({
+                        ...prev,
+                        platform: e.target.value,
+                      }))
+                    }
+                    className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Any">Any Platform</option>
+                    <option value="Reddit">Reddit</option>
+                    <option value="Discord">Discord</option>
+                    <option value="Forums">Online Forums</option>
+                    <option value="Social Media">Social Media</option>
+                    <option value="Gaming Platforms">Gaming Platforms</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Outreach Goal
+                  </label>
+                  <select
+                    value={promptContext.outreachGoal}
+                    onChange={(e) =>
+                      setPromptContext((prev) => ({
+                        ...prev,
+                        outreachGoal: e.target.value,
+                      }))
+                    }
+                    className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Mental health support">
+                      Mental health support
+                    </option>
+                    <option value="Peer support groups">
+                      Peer support groups
+                    </option>
+                    <option value="Crisis intervention">
+                      Crisis intervention
+                    </option>
+                    <option value="Community building">
+                      Community building
+                    </option>
+                    <option value="Research and data collection">
+                      Research and data collection
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Location Focus
+                  </label>
+                  <select
+                    value={promptContext.location}
+                    onChange={(e) =>
+                      setPromptContext((prev) => ({
+                        ...prev,
+                        location: e.target.value,
+                      }))
+                    }
+                    className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Singapore">Singapore</option>
+                    <option value="Singapore + Regional">
+                      Singapore + Regional
+                    </option>
+                    <option value="Global">Global</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Suggested Prompts - Always visible */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Suggested Research Questions
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {suggestedPrompts.map((prompt, index) => (
+                  <div
+                    key={index}
+                    className="p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      {prompt.icon}
+                      <span className="font-medium text-gray-800">
+                        {prompt.title}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      {prompt.description}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleSendMessage(prompt.prompt)}
+                        disabled={chatLoading}
+                        className="flex-1 text-left p-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded text-sm transition-colors disabled:opacity-50"
+                      >
+                        Generate Prompt
+                      </button>
+                      <button
+                        onClick={() => openJinaSearch(prompt.prompt)}
+                        className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
+                      >
+                        <Search className="w-3 h-3" />
+                        Direct Search
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {/* Chat Messages */}
             <div
@@ -635,29 +750,13 @@ export default function SubredditScraper() {
                           : "bg-white text-gray-800 border border-gray-200"
                       }`}
                     >
-                      {/* Show thinking steps if available */}
-                      {message.role === "assistant" &&
-                        message.thinkingSteps &&
-                        message.thinkingSteps.length > 0 && (
-                          <div className="mb-3 p-2 bg-gray-50 rounded text-xs text-gray-600 border-l-2 border-blue-200">
-                            <div className="font-medium mb-1">
-                              🧠 Reasoning:
-                            </div>
-                            {message.thinkingSteps.map((step, index) => (
-                              <div key={index} className="mb-1">
-                                • {step}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
                       {/* Main content */}
                       <div className="whitespace-pre-wrap">
                         {message.content}
                       </div>
 
-                      {/* Streaming indicator */}
-                      {message.isStreaming && (
+                      {/* Loading indicator */}
+                      {message.role === "assistant" && chatLoading && (
                         <div className="flex items-center gap-2 mt-2 text-xs text-blue-600">
                           <div className="flex gap-1">
                             <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></div>
@@ -670,50 +769,63 @@ export default function SubredditScraper() {
                               style={{ animationDelay: "0.2s" }}
                             ></div>
                           </div>
-                          <span>Streaming response...</span>
+                          <span>Thinking...</span>
                         </div>
                       )}
 
                       {message.role === "assistant" &&
                         message.content &&
-                        !message.isStreaming && (
-                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-200">
-                            <button
-                              onClick={() => copyToClipboard(message.content)}
-                              className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                            >
-                              <Copy className="w-3 h-3" />
-                              Copy
-                            </button>
-                            <span className="text-xs text-gray-400">
-                              {message.timestamp.toLocaleTimeString()}
-                            </span>
+                        !chatLoading && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            {/* Jina AI Action Buttons */}
+                            {message.optimizedPrompt && (
+                              <div className="mb-3 flex flex-wrap gap-2">
+                                <button
+                                  onClick={() => openJinaSearch()}
+                                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                                >
+                                  <Search className="w-4 h-4" />
+                                  Open Jina AI Search
+                                  <ExternalLink className="w-3 h-3" />
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Standard message actions */}
+                            <div className="flex items-center gap-2">
+                              {message.optimizedPrompt && (
+                                <button
+                                  onClick={() =>
+                                    copyToClipboard(
+                                      message.optimizedPrompt!,
+                                      `prompt-${message.id}`
+                                    )
+                                  }
+                                  className={`text-xs flex items-center gap-1 transition-colors ${
+                                    copiedItems.has(`prompt-${message.id}`)
+                                      ? "text-green-600"
+                                      : "text-gray-500 hover:text-gray-700"
+                                  }`}
+                                >
+                                  <Copy className="w-3 h-3" />
+                                  {copiedItems.has(`prompt-${message.id}`)
+                                    ? "Copied!"
+                                    : "Copy Prompt"}
+                                </button>
+                              )}
+                              <span className="text-xs text-gray-400">
+                                {message.timestamp instanceof Date
+                                  ? message.timestamp.toLocaleTimeString()
+                                  : new Date(
+                                      message.timestamp
+                                    ).toLocaleTimeString()}
+                              </span>
+                            </div>
                           </div>
                         )}
                     </div>
                   </div>
                 ))}
-
-                {(chatLoading || streamingStatus) && (
-                  <div className="flex justify-start">
-                    <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-                        <div
-                          className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.1s" }}
-                        ></div>
-                        <div
-                          className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.2s" }}
-                        ></div>
-                        <span className="text-sm text-gray-600 ml-2">
-                          {streamingStatus || "Connecting to AI..."}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 <div ref={messagesEndRef} />
               </div>
@@ -735,7 +847,7 @@ export default function SubredditScraper() {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Ask about youth communities, digital spaces, or outreach strategies..."
+                    placeholder="Ask about finding online communities, Discord servers, subreddits, or outreach opportunities..."
                     className="w-full resize-none border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={1}
                     disabled={chatLoading}

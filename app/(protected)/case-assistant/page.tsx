@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import Navbar from "../../components/Navbar";
-import CoPilotSamantha from "../../components/CoPilotSamantha";
+import CoPilotSamantha from "@/components/CoPilotSamantha";
 import {
   Bold,
   Italic,
@@ -221,7 +220,6 @@ export default function CaseWriter() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
       <div className="flex-1 flex h-full">
         <div className="flex-1 px-6 py-8">
           <div className="w-full flex-1 p-8">
