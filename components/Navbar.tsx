@@ -9,16 +9,22 @@ export default function Navbar() {
 
   const navItems = [
     {
-      name: "All Posts",
+      name: "Voyager Search",
+      href: "/search",
+      icon: Search,
+      description: "Subreddit Web Scraping Tool",
+    },
+    {
+      name: "Outreach",
       href: "/outreach",
       icon: Database,
       description: "View messages and analytics",
     },
     {
-      name: "Voyager Search",
-      href: "/search",
-      icon: Search,
-      description: "Subreddit Web Scraping Tool",
+      name: "Cosmic Survey",
+      href: "/survey",
+      icon: Database,
+      description: "View survey responses",
     },
     {
       name: "Co-Pilot Samantha",
