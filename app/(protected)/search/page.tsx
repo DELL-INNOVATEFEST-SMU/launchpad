@@ -369,7 +369,7 @@ ${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")
 **Reasoning:** ${promptData.reasoning}
 
 ---
-*Click the button below to search with Jina AI using this optimized prompt.*`,
+*Click "Open Jina AI Search" to open Jina AI, then copy and paste the optimized prompt above into the search box.*`,
         timestamp: new Date(),
         promptData, // Store the prompt data for the button
       };
@@ -794,36 +794,12 @@ ${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")
                             {message.promptData && (
                               <div className="mb-3 flex flex-wrap gap-2">
                                 <button
-                                  onClick={() =>
-                                    window.open(
-                                      message.promptData!.jinaSearchUrl,
-                                      "_blank",
-                                      "noopener,noreferrer"
-                                    )
-                                  }
+                                  onClick={() => openJinaSearch()}
                                   className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
                                 >
                                   <Search className="w-4 h-4" />
-                                  Search with Jina AI
+                                  Open Jina AI Search
                                   <ExternalLink className="w-3 h-3" />
-                                </button>
-                                <button
-                                  onClick={() =>
-                                    copyToClipboard(
-                                      message.promptData!.optimizedPrompt,
-                                      `prompt-${message.id}`
-                                    )
-                                  }
-                                  className={`inline-flex items-center gap-1 text-sm px-3 py-2 border rounded-md transition-colors ${
-                                    copiedItems.has(`prompt-${message.id}`)
-                                      ? "text-green-600 border-green-300 bg-green-50"
-                                      : "text-gray-600 hover:text-gray-800 border-gray-300 hover:bg-gray-50"
-                                  }`}
-                                >
-                                  <Copy className="w-3 h-3" />
-                                  {copiedItems.has(`prompt-${message.id}`)
-                                    ? "Copied!"
-                                    : "Copy Generated Prompt"}
                                 </button>
                               </div>
                             )}
@@ -846,7 +822,7 @@ ${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")
                                 <Copy className="w-3 h-3" />
                                 {copiedItems.has(`response-${message.id}`)
                                   ? "Copied!"
-                                  : "Copy Response"}
+                                  : "Copy Prompt"}
                               </button>
                               <span className="text-xs text-gray-400">
                                 {message.timestamp instanceof Date
