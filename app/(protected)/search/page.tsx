@@ -10,8 +10,10 @@ import {
   Sparkles,
   RefreshCw,
   Copy,
+  ExternalLink,
+  Search,
+  Lightbulb,
 } from "lucide-react";
-import { sendJinaMessage } from "@/app/actions/jina-chat";
 
 interface SubredditInput {
   name: string;
@@ -23,29 +25,13 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  isStreaming?: boolean;
-  thinkingSteps?: string[];
-}
-
-interface StreamingStatus {
-  phase:
-    | "connecting"
-    | "thinking"
-    | "searching"
-    | "reading"
-    | "analyzing"
-    | "writing"
-    | "complete";
-  message: string;
-  sources?: string[];
-  reasoningSteps?: string[];
-  isCollapsed?: boolean;
 }
 
 interface SuggestedPrompt {
   title: string;
   prompt: string;
   icon: React.ReactNode;
+  description: string;
 }
 
 const suggestedPrompts: SuggestedPrompt[] = [
@@ -54,24 +40,31 @@ const suggestedPrompts: SuggestedPrompt[] = [
     prompt:
       "Help me identify online communities and digital spaces where Singapore youths aged 12-19 gather to discuss mental health, share struggles, or seek peer support.",
     icon: <Users className="w-4 h-4" />,
+    description:
+      "Discover online spaces where Singapore teens connect and share experiences",
   },
   {
     title: "Social Media Platforms",
     prompt:
       "What are the most popular social media platforms and online spaces used by Singapore teenagers for emotional expression and venting?",
     icon: <MessageSquare className="w-4 h-4" />,
+    description:
+      "Explore social platforms where teens express emotions and seek support",
   },
   {
     title: "Gaming & Discord Communities",
     prompt:
       "Identify gaming communities, Discord servers, and online forums popular among Singapore teens where mental health discussions or emotional support naturally occur.",
     icon: <Sparkles className="w-4 h-4" />,
+    description: "Find gaming and Discord spaces with supportive communities",
   },
   {
     title: "Reddit & Forum Spaces",
     prompt:
       "Find Singapore-specific subreddits and online forums where young people aged 12-19 might share personal struggles, seek advice, or discuss mental health topics.",
     icon: <RefreshCw className="w-4 h-4" />,
+    description:
+      "Locate Singapore-focused forums and subreddits for youth support",
   },
 ];
 
@@ -89,8 +82,6 @@ export default function SubredditScraper() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
-  const [streamingStatus, setStreamingStatus] =
-    useState<StreamingStatus | null>(null);
   const [sessionId, setSessionId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -132,13 +123,13 @@ export default function SubredditScraper() {
         lastActive: new Date().toISOString(),
       };
       localStorage.setItem(
-        `jina-chat-${currentSessionId}`,
+        `local-chat-${currentSessionId}`,
         JSON.stringify(sessionData)
       );
 
       // Also maintain a list of all sessions
       const existingSessions = JSON.parse(
-        localStorage.getItem("jina-chat-sessions") || "[]"
+        localStorage.getItem("local-chat-sessions") || "[]"
       );
       const sessionIndex = existingSessions.findIndex(
         (s: { id: string }) => s.id === currentSessionId
@@ -161,7 +152,7 @@ export default function SubredditScraper() {
       }
 
       localStorage.setItem(
-        "jina-chat-sessions",
+        "local-chat-sessions",
         JSON.stringify(existingSessions)
       );
     } catch (error) {
@@ -174,7 +165,7 @@ export default function SubredditScraper() {
     (sessionIdToLoad: string): ChatMessage[] => {
       try {
         const sessionData = localStorage.getItem(
-          `jina-chat-${sessionIdToLoad}`
+          `local-chat-${sessionIdToLoad}`
         );
         if (sessionData) {
           const parsed = JSON.parse(sessionData);
@@ -192,7 +183,7 @@ export default function SubredditScraper() {
   const getCurrentSession = useCallback((): string => {
     // Try to get the last active session
     const sessions = JSON.parse(
-      localStorage.getItem("jina-chat-sessions") || "[]"
+      localStorage.getItem("local-chat-sessions") || "[]"
     );
     if (sessions.length > 0) {
       // Sort by last active and return the most recent
@@ -318,184 +309,32 @@ export default function SubredditScraper() {
     setChatLoading(true);
     setChatError(null);
 
-    // Set initial connecting status
-    setStreamingStatus({
-      phase: "connecting",
-      message: "Connecting to Jina AI...",
-      isCollapsed: false,
-    });
-
     try {
-      // Simulate connection delay with status updates
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      // Simulate local AI response (you can replace this with your local AI)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      setStreamingStatus({
-        phase: "thinking",
-        message: "Thinking...",
-        reasoningSteps: [],
-        isCollapsed: false,
-      });
-
-      // Prepare messages for API
-      const apiMessages = [...chatMessages, userMessage].map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
-
-      const stream = await sendJinaMessage(apiMessages);
-      const reader = stream.getReader();
-      const decoder = new TextDecoder();
-
-      // Create assistant message
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "",
+        content: `I understand you're asking about: "${content}"
+
+For comprehensive research on digital spaces and online communities where Singapore youths gather, I recommend using Jina AI's Deep Search feature. It can help you find:
+
+• Specific online communities and platforms
+• Singapore-focused forums and social spaces
+• Gaming communities and Discord servers
+• Mental health support groups and resources
+
+Click the "Search with Jina AI" button below to get detailed insights with their advanced reasoning capabilities.`,
         timestamp: new Date(),
-        isStreaming: true,
-        thinkingSteps: [],
       };
 
       setChatMessages((prev) => [...prev, assistantMessage]);
-
-      // Process streaming response with enhanced status updates
-      let accumulatedContent = "";
-      const currentThinkingSteps: string[] = [];
-      let phaseCounter = 0;
-
-      // Simulate different phases of processing
-      const phases = [
-        {
-          phase: "searching" as const,
-          message: "🔍 Searching digital spaces and communities...",
-        },
-        {
-          phase: "reading" as const,
-          message: "📚 Reading and analyzing sources...",
-          sources: ["sma.org.sg", "healthhub.sg", "mindline.sg"],
-        },
-        {
-          phase: "analyzing" as const,
-          message: "🧠 Analyzing community patterns and engagement...",
-        },
-        {
-          phase: "writing" as const,
-          message: "✍️ Formulating comprehensive insights...",
-        },
-      ];
-
-      // Update status every 2 seconds to show progress
-      const statusInterval = setInterval(() => {
-        if (phaseCounter < phases.length) {
-          const currentPhase = phases[phaseCounter];
-          setStreamingStatus({
-            phase: currentPhase.phase,
-            message: currentPhase.message,
-            sources: currentPhase.sources,
-            reasoningSteps: currentThinkingSteps,
-            isCollapsed: false,
-          });
-          phaseCounter++;
-        }
-      }, 2000);
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const data = line.slice(6).trim();
-            if (data === "[DONE]") continue;
-
-            try {
-              const parsed = JSON.parse(data);
-
-              // Handle different types of streaming data
-              if (parsed.choices?.[0]?.delta?.content) {
-                const content = parsed.choices[0].delta.content;
-                accumulatedContent += content;
-
-                // Update content in real-time
-                setChatMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMessage.id
-                      ? {
-                          ...msg,
-                          content: accumulatedContent,
-                          isStreaming: true,
-                        }
-                      : msg
-                  )
-                );
-              }
-
-              // Handle reasoning steps if provided
-              if (parsed.reasoning_step) {
-                currentThinkingSteps.push(parsed.reasoning_step);
-                setStreamingStatus((prev) =>
-                  prev
-                    ? {
-                        ...prev,
-                        reasoningSteps: [...currentThinkingSteps],
-                      }
-                    : null
-                );
-              }
-            } catch (parseError) {
-              console.warn("Failed to parse streaming response:", parseError);
-            }
-          }
-        }
-      }
-
-      // Clear status interval and mark as complete
-      clearInterval(statusInterval);
-      setStreamingStatus({
-        phase: "complete",
-        message: "Response complete",
-        isCollapsed: true,
-      });
-
-      // Mark streaming as complete
-      setChatMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === assistantMessage.id ? { ...msg, isStreaming: false } : msg
-        )
-      );
-
-      // Hide status after a brief delay
-      setTimeout(() => setStreamingStatus(null), 1000);
     } catch (error) {
       console.error("Chat error:", error);
       setChatError("Failed to get response. Please try again.");
-      setStreamingStatus(null);
-
-      // Mark any streaming message as failed and save state
-      setChatMessages((prev) => {
-        const updatedMessages = prev.map((msg) =>
-          msg.isStreaming
-            ? {
-                ...msg,
-                isStreaming: false,
-                content: msg.content + "\n\n⚠️ Stream interrupted",
-              }
-            : msg
-        );
-
-        // Save the updated state
-        if (sessionId) {
-          saveChatSession(updatedMessages, sessionId);
-        }
-
-        return updatedMessages;
-      });
     } finally {
       setChatLoading(false);
-      setStreamingStatus(null);
     }
   };
 
@@ -518,17 +357,17 @@ export default function SubredditScraper() {
 
     // Clear from localStorage and start new session
     if (sessionId) {
-      localStorage.removeItem(`jina-chat-${sessionId}`);
+      localStorage.removeItem(`local-chat-${sessionId}`);
 
       // Remove from sessions list
       const sessions = JSON.parse(
-        localStorage.getItem("jina-chat-sessions") || "[]"
+        localStorage.getItem("local-chat-sessions") || "[]"
       );
       const filteredSessions = sessions.filter(
         (s: { id: string }) => s.id !== sessionId
       );
       localStorage.setItem(
-        "jina-chat-sessions",
+        "local-chat-sessions",
         JSON.stringify(filteredSessions)
       );
     }
@@ -538,71 +377,10 @@ export default function SubredditScraper() {
     setSessionId(newSessionId);
   };
 
-  // Enhanced status display component
-  const StreamingStatusDisplay = ({ status }: { status: StreamingStatus }) => {
-    const [isCollapsed, setIsCollapsed] = useState(status.isCollapsed);
-
-    if (!status) return null;
-
-    return (
-      <div className="flex justify-start">
-        <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 max-w-2xl">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-            <div
-              className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-              style={{ animationDelay: "0.1s" }}
-            ></div>
-            <div
-              className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-              style={{ animationDelay: "0.2s" }}
-            ></div>
-            <span className="text-sm text-gray-600 ml-2">{status.message}</span>
-            {(status.reasoningSteps?.length || status.sources?.length) && (
-              <button
-                onClick={() => setIsCollapsed(!isCollapsed)}
-                className="ml-auto text-gray-400 hover:text-gray-600"
-              >
-                {isCollapsed ? "▼" : "▲"}
-              </button>
-            )}
-          </div>
-
-          {!isCollapsed && (
-            <div className="space-y-2">
-              {/* Reasoning Steps */}
-              {status.reasoningSteps && status.reasoningSteps.length > 0 && (
-                <div className="text-xs text-gray-500">
-                  <div className="font-medium mb-1">Reasoning:</div>
-                  {status.reasoningSteps.map((step, index) => (
-                    <div key={index} className="ml-2">
-                      • {step}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Sources being read */}
-              {status.sources && status.sources.length > 0 && (
-                <div className="text-xs text-gray-500">
-                  <div className="font-medium mb-1">Reading:</div>
-                  <div className="flex flex-wrap gap-1">
-                    {status.sources.map((source, index) => (
-                      <span
-                        key={index}
-                        className="bg-gray-100 px-2 py-1 rounded text-xs"
-                      >
-                        {source}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    );
+  const openJinaSearch = (query?: string) => {
+    const baseUrl = "https://search.jina.ai/";
+    const url = query ? `${baseUrl}?q=${encodeURIComponent(query)}` : baseUrl;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -687,7 +465,7 @@ export default function SubredditScraper() {
                 <div className="flex items-center gap-2">
                   <MessageCircle className="w-6 h-6 text-blue-600" />
                   <h2 className="text-2xl font-bold text-black">
-                    The AI Voyager
+                    Youth Outreach Assistant
                   </h2>
                 </div>
 
@@ -715,28 +493,81 @@ export default function SubredditScraper() {
               </p>
             </div>
 
+            {/* Jina AI Integration Section */}
+            <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <Search className="w-6 h-6 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                    Deep Search with Jina AI
+                  </h3>
+                  <p className="text-blue-800 text-sm mb-3">
+                    For comprehensive research on digital spaces and online
+                    communities, use Jina AI&apos;s advanced reasoning
+                    capabilities to find Singapore youth communities, social
+                    platforms, and outreach opportunities.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => openJinaSearch()}
+                      className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                    >
+                      <Search className="w-4 h-4" />
+                      Open Jina AI Search
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+                    <div className="text-xs text-blue-600 flex items-center gap-1">
+                      <Lightbulb className="w-3 h-3" />
+                      <span>
+                        Set reasoning effort to &quot;High&quot; for best
+                        results
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Suggested Prompts - Show only when no messages */}
             {chatMessages.length === 0 && (
               <div className="mb-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  Suggested Questions
+                  Suggested Research Questions
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {suggestedPrompts.map((prompt, index) => (
-                    <button
+                    <div
                       key={index}
-                      onClick={() => handleSendMessage(prompt.prompt)}
-                      disabled={chatLoading}
-                      className="text-left p-4 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors disabled:opacity-50"
+                      className="p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
                     >
                       <div className="flex items-center gap-2 mb-2">
                         {prompt.icon}
-                        <span className="font-medium text-blue-800">
+                        <span className="font-medium text-gray-800">
                           {prompt.title}
                         </span>
                       </div>
-                      <p className="text-sm text-blue-700">{prompt.prompt}</p>
-                    </button>
+                      <p className="text-sm text-gray-600 mb-3">
+                        {prompt.description}
+                      </p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSendMessage(prompt.prompt)}
+                          disabled={chatLoading}
+                          className="flex-1 text-left p-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded text-sm transition-colors disabled:opacity-50"
+                        >
+                          Ask Locally
+                        </button>
+                        <button
+                          onClick={() => openJinaSearch(prompt.prompt)}
+                          className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
+                        >
+                          <Search className="w-3 h-3" />
+                          Search
+                        </button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -766,29 +597,13 @@ export default function SubredditScraper() {
                           : "bg-white text-gray-800 border border-gray-200"
                       }`}
                     >
-                      {/* Show thinking steps if available */}
-                      {message.role === "assistant" &&
-                        message.thinkingSteps &&
-                        message.thinkingSteps.length > 0 && (
-                          <div className="mb-3 p-2 bg-gray-50 rounded text-xs text-gray-600 border-l-2 border-blue-200">
-                            <div className="font-medium mb-1">
-                              🧠 Reasoning:
-                            </div>
-                            {message.thinkingSteps.map((step, index) => (
-                              <div key={index} className="mb-1">
-                                • {step}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
                       {/* Main content */}
                       <div className="whitespace-pre-wrap">
                         {message.content}
                       </div>
 
-                      {/* Streaming indicator */}
-                      {message.isStreaming && (
+                      {/* Loading indicator */}
+                      {message.role === "assistant" && chatLoading && (
                         <div className="flex items-center gap-2 mt-2 text-xs text-blue-600">
                           <div className="flex gap-1">
                             <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce"></div>
@@ -801,13 +616,13 @@ export default function SubredditScraper() {
                               style={{ animationDelay: "0.2s" }}
                             ></div>
                           </div>
-                          <span>Streaming response...</span>
+                          <span>Thinking...</span>
                         </div>
                       )}
 
                       {message.role === "assistant" &&
                         message.content &&
-                        !message.isStreaming && (
+                        !chatLoading && (
                           <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-200">
                             <button
                               onClick={() => copyToClipboard(message.content)}
@@ -824,10 +639,6 @@ export default function SubredditScraper() {
                     </div>
                   </div>
                 ))}
-
-                {(chatLoading || streamingStatus) && streamingStatus && (
-                  <StreamingStatusDisplay status={streamingStatus} />
-                )}
 
                 <div ref={messagesEndRef} />
               </div>
