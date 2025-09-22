@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Database, Search, FileText, LogOut } from "lucide-react";
+import { Database, Search, FileText, LogOut, BarChart3 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Navbar() {
@@ -36,7 +36,7 @@ export default function Navbar() {
     {
       name: "Cosmic Survey",
       href: "/survey",
-      icon: Database,
+      icon: BarChart3,
       description: "View survey responses",
     },
     {
