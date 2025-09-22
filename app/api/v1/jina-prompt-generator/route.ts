@@ -13,10 +13,6 @@ interface JinaPromptRequest {
 
 interface JinaPromptResponse {
   optimizedPrompt: string
-  searchStrategy: string
-  expectedResults: string[]
-  jinaSearchUrl: string
-  reasoning: string
 }
 
 /**
@@ -40,7 +36,7 @@ export async function POST(request: NextRequest): Promise<NextResponse<JinaPromp
 
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash-exp",
+      model: "gemini-2.5-flash",
       generationConfig: {
         temperature: 0.3, // Lower temperature for more consistent prompt generation
         topK: 20,
@@ -76,10 +72,7 @@ site:reddit.com "Singapore" ("mental health" OR "emotional support" OR "personal
 
 OUTPUT FORMAT (JSON):
 {
-  "optimizedPrompt": "Detailed, specific prompt for Jina AI Deep Search with site operators and keywords",
-  "searchStrategy": "Explanation of search approach and why it will be effective",
-  "expectedResults": ["List of expected result types"],
-  "reasoning": "Why this prompt will be effective and what makes it optimized"
+  "optimizedPrompt": "Detailed, specific prompt for Jina AI Deep Search with site operators and keywords"
 }
 
 FOCUS AREAS:
@@ -99,7 +92,7 @@ Generate an optimized Jina AI Deep Search prompt for: "${userQuery}"
 
 The prompt should be specific, use appropriate site operators, and include relevant keywords for maximum effectiveness.
 
-Respond ONLY with valid JSON in the exact format specified above.`
+Respond ONLY with valid JSON containing the optimizedPrompt field.`
 
     const result = await model.generateContent(systemPrompt)
     const response = await result.response
@@ -119,7 +112,6 @@ Respond ONLY with valid JSON in the exact format specified above.`
       console.warn("Failed to parse JSON response, using fallback:", parseError)
       // Fallback if JSON parsing fails
       const platform = context?.platform || "Any"
-      const audience = context?.targetAudience || "Singapore youths aged 12-19"
       
       let fallbackPrompt = ""
       if (platform === "Reddit") {
@@ -131,10 +123,7 @@ Respond ONLY with valid JSON in the exact format specified above.`
       }
       
       parsedResponse = {
-        optimizedPrompt: fallbackPrompt,
-        searchStrategy: "Site-specific search with targeted keywords for maximum relevance",
-        expectedResults: ["Online communities", "Support groups", "Discussion forums", "Discord servers", "Reddit subreddits"],
-        reasoning: "Generated fallback prompt using site operators and targeted keywords for effective community discovery"
+        optimizedPrompt: fallbackPrompt
       }
     }
 
@@ -142,22 +131,9 @@ Respond ONLY with valid JSON in the exact format specified above.`
     if (!parsedResponse.optimizedPrompt) {
       parsedResponse.optimizedPrompt = `site:reddit.com "Singapore" ("mental health" OR "emotional support" OR "personal struggles") ("youth" OR "teens" OR "students")`
     }
-    if (!parsedResponse.searchStrategy) {
-      parsedResponse.searchStrategy = "Direct search approach"
-    }
-    if (!parsedResponse.expectedResults || !Array.isArray(parsedResponse.expectedResults)) {
-      parsedResponse.expectedResults = ["Online communities", "Support groups", "Discussion forums"]
-    }
-    if (!parsedResponse.reasoning) {
-      parsedResponse.reasoning = "Generated based on user query"
-    }
-
-    // Create Jina AI search URL
-    const jinaSearchUrl = `https://search.jina.ai/?q=${encodeURIComponent(parsedResponse.optimizedPrompt)}`
 
     const finalResponse: JinaPromptResponse = {
-      ...parsedResponse,
-      jinaSearchUrl
+      optimizedPrompt: parsedResponse.optimizedPrompt
     }
 
     return NextResponse.json(finalResponse)

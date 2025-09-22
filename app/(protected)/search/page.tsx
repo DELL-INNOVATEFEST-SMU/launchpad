@@ -25,13 +25,7 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
-  promptData?: {
-    optimizedPrompt: string;
-    searchStrategy: string;
-    expectedResults: string[];
-    jinaSearchUrl: string;
-    reasoning: string;
-  };
+  optimizedPrompt?: string;
 }
 
 interface SuggestedPrompt {
@@ -361,17 +355,10 @@ export default function SubredditScraper() {
 **Generated Prompt:**
 ${promptData.optimizedPrompt}
 
-**Search Strategy:** ${promptData.searchStrategy}
-
-**Expected Results:**
-${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")}
-
-**Reasoning:** ${promptData.reasoning}
-
 ---
 *Click "Open Jina AI Search" to open Jina AI, then copy and paste the optimized prompt above into the search box.*`,
         timestamp: new Date(),
-        promptData, // Store the prompt data for the button
+        optimizedPrompt: promptData.optimizedPrompt,
       };
 
       setChatMessages((prev) => [...prev, assistantMessage]);
@@ -791,7 +778,7 @@ ${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")
                         !chatLoading && (
                           <div className="mt-3 pt-3 border-t border-gray-200">
                             {/* Jina AI Action Buttons */}
-                            {message.promptData && (
+                            {message.optimizedPrompt && (
                               <div className="mb-3 flex flex-wrap gap-2">
                                 <button
                                   onClick={() => openJinaSearch()}
@@ -806,24 +793,26 @@ ${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")
 
                             {/* Standard message actions */}
                             <div className="flex items-center gap-2">
-                              <button
-                                onClick={() =>
-                                  copyToClipboard(
-                                    message.content,
-                                    `response-${message.id}`
-                                  )
-                                }
-                                className={`text-xs flex items-center gap-1 transition-colors ${
-                                  copiedItems.has(`response-${message.id}`)
-                                    ? "text-green-600"
-                                    : "text-gray-500 hover:text-gray-700"
-                                }`}
-                              >
-                                <Copy className="w-3 h-3" />
-                                {copiedItems.has(`response-${message.id}`)
-                                  ? "Copied!"
-                                  : "Copy Prompt"}
-                              </button>
+                              {message.optimizedPrompt && (
+                                <button
+                                  onClick={() =>
+                                    copyToClipboard(
+                                      message.optimizedPrompt!,
+                                      `prompt-${message.id}`
+                                    )
+                                  }
+                                  className={`text-xs flex items-center gap-1 transition-colors ${
+                                    copiedItems.has(`prompt-${message.id}`)
+                                      ? "text-green-600"
+                                      : "text-gray-500 hover:text-gray-700"
+                                  }`}
+                                >
+                                  <Copy className="w-3 h-3" />
+                                  {copiedItems.has(`prompt-${message.id}`)
+                                    ? "Copied!"
+                                    : "Copy Prompt"}
+                                </button>
+                              )}
                               <span className="text-xs text-gray-400">
                                 {message.timestamp instanceof Date
                                   ? message.timestamp.toLocaleTimeString()
