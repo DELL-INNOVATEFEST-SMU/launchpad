@@ -1,6 +1,4 @@
-import { adminLogout } from "@/app/actions/admin-auth";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 
 /**
  * Admin Dashboard Page
@@ -10,47 +8,17 @@ import { Button } from "@/components/ui/button";
 export default async function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-                Admin Dashboard
-              </h1>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Welcome to the SAMH Space Station Admin Panel
-              </p>
-            </div>
-            <form action={adminLogout}>
-              <Button
-                type="submit"
-                variant="destructive"
-                className="inline-flex items-center"
-              >
-                <svg
-                  className="w-4 h-4 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-                  />
-                </svg>
-                Logout
-              </Button>
-            </form>
-          </div>
-        </div>
-      </header>
-
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Admin Dashboard
+            </h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              Welcome to the SAMH Space Station Admin Panel
+            </p>
+          </div>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {/* Quick Actions */}
             <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">

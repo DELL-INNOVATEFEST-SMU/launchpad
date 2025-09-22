@@ -1,4 +1,5 @@
 import { requireAuth } from "@/lib/auth-utils";
+import Navbar from "@/components/Navbar";
 
 /**
  * Protected Layout
@@ -13,5 +14,10 @@ export default async function ProtectedLayout({
   // This will redirect to login if not authenticated
   await requireAuth();
 
-  return <>{children}</>;
+  return (
+    <>
+      <Navbar />
+      {children}
+    </>
+  );
 }

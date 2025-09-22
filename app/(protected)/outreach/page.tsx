@@ -1,9 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import type { JSX } from "react";
 import { Search, ChevronDown, Calendar } from "lucide-react";
-import Navbar from "../../components/Navbar";
 
 const PAGE_SIZE = 10;
 
@@ -133,7 +131,6 @@ export default function StartingPointAggregator() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
       <div className="flex-1 px-6 py-8">
         <div className="w-full flex-1 p-8">
           <div className="flex justify-between items-center mb-6">

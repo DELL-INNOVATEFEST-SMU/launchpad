@@ -16,6 +16,12 @@ export default function Navbar() {
 
   const navItems = [
     {
+      name: "Dashboard",
+      href: "/dashboard",
+      icon: Database,
+      description: "Admin Dashboard",
+    },
+    {
       name: "Voyager Search",
       href: "/search",
       icon: Search,

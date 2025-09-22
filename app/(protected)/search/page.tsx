@@ -11,8 +11,7 @@ import {
   RefreshCw,
   Copy,
 } from "lucide-react";
-import Navbar from "../../components/Navbar";
-import { sendJinaMessage } from "../actions/jina-chat";
+import { sendJinaMessage } from "@/app/actions/jina-chat";
 
 interface SubredditInput {
   name: string;
@@ -608,7 +607,6 @@ export default function SubredditScraper() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
       <div className="flex-1 px-6 py-8">
         <div className="w-full flex-1 p-8">
           <div className="w-full max-w-2xl mx-auto mb-6">
