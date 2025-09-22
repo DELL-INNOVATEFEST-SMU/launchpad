@@ -2,14 +2,8 @@
 
 import React, { useEffect, useState, useCallback } from "react";
 import type { JSX } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { Search, ChevronDown, Calendar } from "lucide-react";
 import Navbar from "../../components/Navbar";
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 const PAGE_SIZE = 10;
 
@@ -22,6 +16,13 @@ interface Row {
   content: string;
   link: string;
   timestamp: string;
+}
+
+interface MessagesResponse {
+  data: Row[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export default function StartingPointAggregator() {
@@ -38,35 +39,36 @@ export default function StartingPointAggregator() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    let query = supabase
-      .from("messages")
-      .select("*", { count: "exact" })
-      .order("timestamp", { ascending: false });
 
-    if (search) query = query.ilike("username", `%${search}%`);
-    if (platform) query = query.eq("source", platform);
-    if (severity) query = query.eq("score", severity);
-    if (date) {
-      const start = new Date(date);
-      start.setHours(0, 0, 0, 0);
-      const end = new Date(date);
-      end.setHours(23, 59, 59, 999);
+    try {
+      // Build query parameters
+      const params = new URLSearchParams({
+        page: page.toString(),
+        pageSize: PAGE_SIZE.toString(),
+      });
 
-      query = query.gte("timestamp", start.toISOString());
-      query = query.lte("timestamp", end.toISOString());
+      if (search) params.append("search", search);
+      if (platform) params.append("platform", platform);
+      if (severity !== "") params.append("severity", severity.toString());
+      if (date) params.append("date", date);
+
+      const response = await fetch(`/api/messages?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result: MessagesResponse = await response.json();
+
+      setData(result.data);
+      setTotal(result.total);
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+      setData([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
     }
-
-    // Pagination
-    const from = (page - 1) * PAGE_SIZE;
-    const to = from + PAGE_SIZE - 1;
-    query = query.range(from, to);
-
-    const { data: rows, count, error } = await query;
-    if (!error && rows) {
-      setData(rows);
-      setTotal(count || 0);
-    }
-    setLoading(false);
   }, [search, platform, severity, date, page]);
 
   useEffect(() => {

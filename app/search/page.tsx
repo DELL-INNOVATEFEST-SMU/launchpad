@@ -67,7 +67,7 @@ export default function SubredditScraper() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [inputs, setInputs] = useState<SubredditInput[]>([
-    { name: "", numPosts: "" },
+    { name: "", numPosts: 10 },
   ]);
 
   // Chat interface state with persistence
@@ -259,13 +259,16 @@ export default function SubredditScraper() {
 
     try {
       console.log("Submitting payload:", payload);
-      const response = await fetch("http://localhost:8000/scrape", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        "https://reddit-scrapper-smu.apps.innovate.sg-cna.com/scrape",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Server error: ${response.statusText}`);
