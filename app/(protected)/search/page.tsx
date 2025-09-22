@@ -101,6 +101,9 @@ export default function SubredditScraper() {
     location: "Singapore",
   });
 
+  // Copy feedback state
+  const [copiedItems, setCopiedItems] = useState<Set<string>>(new Set());
+
   const handleNameChange = (index: number, value: string) => {
     const newInputs = [...inputs];
     newInputs[index].name = value;
@@ -184,7 +187,12 @@ export default function SubredditScraper() {
         );
         if (sessionData) {
           const parsed = JSON.parse(sessionData);
-          return parsed.messages || [];
+          const messages = parsed.messages || [];
+          // Convert timestamp strings back to Date objects
+          return messages.map((msg: ChatMessage & { timestamp: string }) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          }));
         }
       } catch (error) {
         console.warn("Failed to load chat session:", error);
@@ -382,8 +390,20 @@ ${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")
     }
   };
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, itemId?: string) => {
     navigator.clipboard.writeText(text).then(() => {
+      if (itemId) {
+        // Add to copied items set
+        setCopiedItems((prev) => new Set(prev).add(itemId));
+        // Remove after 2 seconds
+        setTimeout(() => {
+          setCopiedItems((prev) => {
+            const newSet = new Set(prev);
+            newSet.delete(itemId);
+            return newSet;
+          });
+        }, 2000);
+      }
       console.log("Copied to clipboard");
     });
   };
@@ -502,7 +522,7 @@ ${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")
                 <div className="flex items-center gap-2">
                   <MessageCircle className="w-6 h-6 text-blue-600" />
                   <h2 className="text-2xl font-bold text-black">
-                    Youth Outreach Assistant
+                    DeepSearch Prompt Generator
                   </h2>
                 </div>
 
@@ -678,48 +698,46 @@ ${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")
               </div>
             </div>
 
-            {/* Suggested Prompts - Show only when no messages */}
-            {chatMessages.length === 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  Suggested Research Questions
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {suggestedPrompts.map((prompt, index) => (
-                    <div
-                      key={index}
-                      className="p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 mb-2">
-                        {prompt.icon}
-                        <span className="font-medium text-gray-800">
-                          {prompt.title}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-3">
-                        {prompt.description}
-                      </p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleSendMessage(prompt.prompt)}
-                          disabled={chatLoading}
-                          className="flex-1 text-left p-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded text-sm transition-colors disabled:opacity-50"
-                        >
-                          Generate Prompt
-                        </button>
-                        <button
-                          onClick={() => openJinaSearch(prompt.prompt)}
-                          className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
-                        >
-                          <Search className="w-3 h-3" />
-                          Direct Search
-                        </button>
-                      </div>
+            {/* Suggested Prompts - Always visible */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Suggested Research Questions
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {suggestedPrompts.map((prompt, index) => (
+                  <div
+                    key={index}
+                    className="p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      {prompt.icon}
+                      <span className="font-medium text-gray-800">
+                        {prompt.title}
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      {prompt.description}
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleSendMessage(prompt.prompt)}
+                        disabled={chatLoading}
+                        className="flex-1 text-left p-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded text-sm transition-colors disabled:opacity-50"
+                      >
+                        Generate Prompt
+                      </button>
+                      <button
+                        onClick={() => openJinaSearch(prompt.prompt)}
+                        className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
+                      >
+                        <Search className="w-3 h-3" />
+                        Direct Search
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
+            </div>
 
             {/* Chat Messages */}
             <div
@@ -792,13 +810,20 @@ ${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")
                                 <button
                                   onClick={() =>
                                     copyToClipboard(
-                                      message.promptData!.optimizedPrompt
+                                      message.promptData!.optimizedPrompt,
+                                      `prompt-${message.id}`
                                     )
                                   }
-                                  className="inline-flex items-center gap-1 text-gray-600 hover:text-gray-800 text-sm px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                                  className={`inline-flex items-center gap-1 text-sm px-3 py-2 border rounded-md transition-colors ${
+                                    copiedItems.has(`prompt-${message.id}`)
+                                      ? "text-green-600 border-green-300 bg-green-50"
+                                      : "text-gray-600 hover:text-gray-800 border-gray-300 hover:bg-gray-50"
+                                  }`}
                                 >
                                   <Copy className="w-3 h-3" />
-                                  Copy Prompt
+                                  {copiedItems.has(`prompt-${message.id}`)
+                                    ? "Copied!"
+                                    : "Copy Generated Prompt"}
                                 </button>
                               </div>
                             )}
@@ -806,14 +831,29 @@ ${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")
                             {/* Standard message actions */}
                             <div className="flex items-center gap-2">
                               <button
-                                onClick={() => copyToClipboard(message.content)}
-                                className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    message.content,
+                                    `response-${message.id}`
+                                  )
+                                }
+                                className={`text-xs flex items-center gap-1 transition-colors ${
+                                  copiedItems.has(`response-${message.id}`)
+                                    ? "text-green-600"
+                                    : "text-gray-500 hover:text-gray-700"
+                                }`}
                               >
                                 <Copy className="w-3 h-3" />
-                                Copy Response
+                                {copiedItems.has(`response-${message.id}`)
+                                  ? "Copied!"
+                                  : "Copy Response"}
                               </button>
                               <span className="text-xs text-gray-400">
-                                {message.timestamp.toLocaleTimeString()}
+                                {message.timestamp instanceof Date
+                                  ? message.timestamp.toLocaleTimeString()
+                                  : new Date(
+                                      message.timestamp
+                                    ).toLocaleTimeString()}
                               </span>
                             </div>
                           </div>

@@ -58,17 +58,28 @@ YOUR ROLE:
 - Prioritize Singapore-specific and youth-focused communities
 
 SEARCH STRATEGIES:
-1. Direct Community Search: "Singapore youth mental health Discord servers"
-2. Platform-Specific: "Reddit communities for Singapore teens with anxiety"
-3. Topic-Based: "Online support groups for Singapore students depression"
-4. Cultural Context: "Singapore Chinese/Malay/Indian youth mental health forums"
+1. Site-specific searches: site:reddit.com "Singapore" ("mental health" OR "emotional support")
+2. Platform-specific: "Singapore youth mental health Discord servers"
+3. Topic-based: "Online support groups for Singapore students depression"
+4. Cultural context: "Singapore Chinese/Malay/Indian youth mental health forums"
+
+PROMPT FORMATTING GUIDELINES:
+- Use specific site operators when targeting platforms (site:reddit.com, site:discord.com)
+- Include relevant keywords in quotes for exact matches
+- Use OR operators for related terms
+- Include demographic terms (youth, teens, students, adolescents)
+- Add location specificity (Singapore, SG, local)
+- Include mental health related terms (anxiety, depression, support, struggles)
+
+EXAMPLE PROMPT:
+site:reddit.com "Singapore" ("mental health" OR "emotional support" OR "personal struggles" OR "seeking advice") (subreddit OR r/) ("youth" OR "teens" OR "students")
 
 OUTPUT FORMAT (JSON):
 {
-  "optimizedPrompt": "Detailed prompt for Jina AI Deep Search",
-  "searchStrategy": "Explanation of search approach",
+  "optimizedPrompt": "Detailed, specific prompt for Jina AI Deep Search with site operators and keywords",
+  "searchStrategy": "Explanation of search approach and why it will be effective",
   "expectedResults": ["List of expected result types"],
-  "reasoning": "Why this prompt will be effective"
+  "reasoning": "Why this prompt will be effective and what makes it optimized"
 }
 
 FOCUS AREAS:
@@ -85,6 +96,8 @@ CONTEXT:
 - Location: ${context?.location || "Singapore"}
 
 Generate an optimized Jina AI Deep Search prompt for: "${userQuery}"
+
+The prompt should be specific, use appropriate site operators, and include relevant keywords for maximum effectiveness.
 
 Respond ONLY with valid JSON in the exact format specified above.`
 
@@ -105,17 +118,29 @@ Respond ONLY with valid JSON in the exact format specified above.`
     } catch (parseError) {
       console.warn("Failed to parse JSON response, using fallback:", parseError)
       // Fallback if JSON parsing fails
+      const platform = context?.platform || "Any"
+      const audience = context?.targetAudience || "Singapore youths aged 12-19"
+      
+      let fallbackPrompt = ""
+      if (platform === "Reddit") {
+        fallbackPrompt = `site:reddit.com "Singapore" ("mental health" OR "emotional support" OR "personal struggles" OR "seeking advice") (subreddit OR r/) ("youth" OR "teens" OR "students")`
+      } else if (platform === "Discord") {
+        fallbackPrompt = `"Singapore" ("Discord" OR "discord.gg") ("mental health" OR "support" OR "anxiety" OR "depression") ("youth" OR "teens" OR "students")`
+      } else {
+        fallbackPrompt = `"Singapore" ("mental health" OR "emotional support" OR "personal struggles") ("youth" OR "teens" OR "students") (${platform === "Any" ? "Reddit OR Discord OR forums" : platform})`
+      }
+      
       parsedResponse = {
-        optimizedPrompt: `Find online communities and digital spaces where ${context?.targetAudience || "Singapore youths aged 12-19"} gather to discuss mental health, share struggles, or seek peer support. Focus on ${context?.platform || "various platforms"} including Reddit subreddits, Discord servers, online forums, and social media groups. Prioritize Singapore-specific communities and consider cultural context.`,
-        searchStrategy: "Direct community search with platform-specific focus",
+        optimizedPrompt: fallbackPrompt,
+        searchStrategy: "Site-specific search with targeted keywords for maximum relevance",
         expectedResults: ["Online communities", "Support groups", "Discussion forums", "Discord servers", "Reddit subreddits"],
-        reasoning: "Generated based on user query and context parameters"
+        reasoning: "Generated fallback prompt using site operators and targeted keywords for effective community discovery"
       }
     }
 
     // Validate required fields
     if (!parsedResponse.optimizedPrompt) {
-      parsedResponse.optimizedPrompt = `Find online communities where ${context?.targetAudience || "Singapore youths"} discuss mental health and seek support.`
+      parsedResponse.optimizedPrompt = `site:reddit.com "Singapore" ("mental health" OR "emotional support" OR "personal struggles") ("youth" OR "teens" OR "students")`
     }
     if (!parsedResponse.searchStrategy) {
       parsedResponse.searchStrategy = "Direct search approach"
