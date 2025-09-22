@@ -41,62 +41,56 @@ export async function POST(request: NextRequest): Promise<NextResponse<JinaPromp
         temperature: 0.3, // Lower temperature for more consistent prompt generation
         topK: 20,
         topP: 0.8,
-        maxOutputTokens: 1024,
+        maxOutputTokens: 2048, // Increased for more detailed prompts
       }
     })
 
-    const systemPrompt = `You are a Jina AI Deep Search Prompt Generator specialized in finding online communities for mental health outreach in Singapore.
+    const systemPrompt = `You are a Jina AI Deep Search Prompt Generator that converts a rough user query into a precise search string. 
+Your search strings must be tuned to return **links to actual online spaces** (Discord invite links, subreddit URLs, forum threads, social groups) relevant for mental-health outreach in Singapore. This means detecting youths that might be venting, stressed, lonely etc.
 
-YOUR ROLE:
-- Analyze user queries about finding online spaces
-- Generate optimized prompts for Jina AI Deep Search
-- Focus on subreddits, Discord servers, forums, and social platforms
-- Prioritize Singapore-specific and youth-focused communities
-
-SEARCH STRATEGIES:
-1. Site-specific searches: site:reddit.com "Singapore" ("mental health" OR "emotional support")
-2. Platform-specific: "Singapore youth mental health Discord servers"
-3. Topic-based: "Online support groups for Singapore students depression"
-4. Cultural context: "Singapore Chinese/Malay/Indian youth mental health forums"
-
-PROMPT FORMATTING GUIDELINES:
-- Use specific site operators when targeting platforms (site:reddit.com, site:discord.com)
-- Include relevant keywords in quotes for exact matches
-- Use OR operators for related terms
-- Include demographic terms (youth, teens, students, adolescents)
-- Add location specificity (Singapore, SG, local)
-- Include mental health related terms (anxiety, depression, support, struggles)
-
-EXAMPLE PROMPT:
-site:reddit.com "Singapore" ("mental health" OR "emotional support" OR "personal struggles" OR "seeking advice") (subreddit OR r/) ("youth" OR "teens" OR "students")
-
-OUTPUT FORMAT (JSON):
+## Output
+Return ONLY valid JSON:
 {
-  "optimizedPrompt": "Detailed, specific prompt for Jina AI Deep Search with site operators and keywords"
+  "optimizedPrompt": "<single search string ready for Jina Deep Search>"
 }
 
-FOCUS AREAS:
-- Singapore-specific communities
-- Youth (12-19 years old) focused spaces
-- Mental health, emotional support, peer groups
-- Gaming communities, Discord servers, Reddit subreddits
-- Cultural and language-specific platforms
+## Inputs
+- userQuery: the user's rough request (one sentence or phrase).
+- context (optional object):
+  - targetAudience (default: "Singapore youths aged 12-19")
+  - platform (default: "Any")  // e.g. "Reddit", "Discord", "Forums", "Social", "Any"
+  - outreachGoal (default: "Mental health support")
+  - location (default: "Singapore")
 
-CONTEXT:
-- Target Audience: ${context?.targetAudience || "Singapore youths aged 12-19"}
-- Platform Preference: ${context?.platform || "Any"}
-- Outreach Goal: ${context?.outreachGoal || "Mental health support"}
-- Location: ${context?.location || "Singapore"}
+## Rules
+1. Your optimized prompt must bias toward **discovering joinable communities or group URLs**, not general info articles.
+2. Use site operators to surface actual communities:
+   - Reddit: site:reddit.com (inurl:/r/ OR intitle:subreddit OR "r/")
+   - Discord: (site:discord.com OR site:discord.gg OR inurl:discord.gg OR inurl:/invite/)
+   - Forums: (site:forums.* OR inurl:forum OR "join our community")
+   - Social: (site:facebook.com/groups OR site:telegram.me OR site:t.me OR site:instagram.com)
+3. Always anchor location: ("Singapore" OR "SG" OR "S'pore" OR "sgp").
+4. Always anchor demographics: ("youth" OR "teen" OR "students" OR "secondary school" OR "poly" OR "JC").
+5. Always anchor topic: ("mental health" OR "emotional support" OR anxiety OR depression OR "peer support" OR "struggles").
+6. Expand with userQuery-specific add-ons (e.g., "gaming", "Valorant", "Roblox").
+7. Exclude noise/irrelevant results: (-NSFW -18+ -dating -porn -gambling -betting -crypto -promo -giveaway -botlist).
+8. Output only ONE well-formed query string.
 
-Generate an optimized Jina AI Deep Search prompt for: "${userQuery}"
+## Example
+Input userQuery: Find gaming Discord servers and communities popular among Singapore teens with mental health discussions
+→ Output optimizedPrompt:
+("Singapore" OR "SG" OR "S'pore") AND ("youth" OR "teens" OR "students") AND ("mental health" OR "emotional support" OR anxiety OR depression OR "peer support") AND (site:discord.com OR site:discord.gg OR inurl:discord.gg OR inurl:/invite/ OR site:reddit.com) AND (gaming OR "gamer" OR esports OR Valorant OR Minecraft OR Roblox) -NSFW -18+ -dating -porn -gambling -betting -crypto -promo -giveaway -botlist
 
-The prompt should be specific, use appropriate site operators, and include relevant keywords for maximum effectiveness.
+## Final Instruction
+Generate an optimized Jina AI Deep Search prompt for: "${userQuery}".
+Focus on **returning community/join links**. Respond ONLY with JSON containing the optimizedPrompt field.`
 
-Respond ONLY with valid JSON containing the optimizedPrompt field.`
-
+    console.log("Sending request to Gemini with userQuery:", userQuery)
     const result = await model.generateContent(systemPrompt)
     const response = await result.response
     const text = response.text()
+    
+    console.log("Raw Gemini response:", text)
 
     // Parse the JSON response
     let parsedResponse
@@ -104,12 +98,17 @@ Respond ONLY with valid JSON containing the optimizedPrompt field.`
       // Extract JSON from the response (handle potential markdown formatting)
       const jsonMatch = text.match(/\{[\s\S]*\}/)
       if (jsonMatch) {
+        console.log("Found JSON match:", jsonMatch[0])
         parsedResponse = JSON.parse(jsonMatch[0])
+        console.log("Parsed response:", parsedResponse)
       } else {
+        console.log("No JSON found in response, full text:", text)
         throw new Error("No JSON found in response")
       }
     } catch (parseError) {
       console.warn("Failed to parse JSON response, using fallback:", parseError)
+      console.log("Full response text that failed to parse:", text)
+      
       // Fallback if JSON parsing fails
       const platform = context?.platform || "Any"
       
@@ -136,6 +135,7 @@ Respond ONLY with valid JSON containing the optimizedPrompt field.`
       optimizedPrompt: parsedResponse.optimizedPrompt
     }
 
+    console.log("Final response:", finalResponse)
     return NextResponse.json(finalResponse)
 
   } catch (error) {
