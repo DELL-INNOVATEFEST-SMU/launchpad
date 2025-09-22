@@ -25,6 +25,13 @@ interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  promptData?: {
+    optimizedPrompt: string;
+    searchStrategy: string;
+    expectedResults: string[];
+    jinaSearchUrl: string;
+    reasoning: string;
+  };
 }
 
 interface SuggestedPrompt {
@@ -38,30 +45,30 @@ const suggestedPrompts: SuggestedPrompt[] = [
   {
     title: "Find Youth Communities",
     prompt:
-      "Help me identify online communities and digital spaces where Singapore youths aged 12-19 gather to discuss mental health, share struggles, or seek peer support.",
+      "Find online communities where Singapore youths discuss mental health and seek peer support",
     icon: <Users className="w-4 h-4" />,
     description:
       "Discover online spaces where Singapore teens connect and share experiences",
   },
   {
-    title: "Social Media Platforms",
+    title: "Discord Servers",
     prompt:
-      "What are the most popular social media platforms and online spaces used by Singapore teenagers for emotional expression and venting?",
+      "Locate Discord servers for Singapore teens with anxiety and depression",
     icon: <MessageSquare className="w-4 h-4" />,
     description:
-      "Explore social platforms where teens express emotions and seek support",
+      "Find Discord communities where teens express emotions and seek support",
   },
   {
-    title: "Gaming & Discord Communities",
+    title: "Gaming Communities",
     prompt:
-      "Identify gaming communities, Discord servers, and online forums popular among Singapore teens where mental health discussions or emotional support naturally occur.",
+      "Find gaming Discord servers and communities popular among Singapore teens with mental health discussions",
     icon: <Sparkles className="w-4 h-4" />,
     description: "Find gaming and Discord spaces with supportive communities",
   },
   {
-    title: "Reddit & Forum Spaces",
+    title: "Reddit Subreddits",
     prompt:
-      "Find Singapore-specific subreddits and online forums where young people aged 12-19 might share personal struggles, seek advice, or discuss mental health topics.",
+      "Find Singapore-specific subreddits where young people share personal struggles and seek advice",
     icon: <RefreshCw className="w-4 h-4" />,
     description:
       "Locate Singapore-focused forums and subreddits for youth support",
@@ -85,6 +92,14 @@ export default function SubredditScraper() {
   const [sessionId, setSessionId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Prompt generation context
+  const [promptContext, setPromptContext] = useState({
+    targetAudience: "Singapore youths aged 12-19",
+    platform: "Any",
+    outreachGoal: "Mental health support",
+    location: "Singapore",
+  });
 
   const handleNameChange = (index: number, value: string) => {
     const newInputs = [...inputs];
@@ -310,29 +325,51 @@ export default function SubredditScraper() {
     setChatError(null);
 
     try {
-      // Simulate local AI response (you can replace this with your local AI)
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Call the Jina prompt generator API
+      const response = await fetch("/api/v1/jina-prompt-generator", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userQuery: content,
+          context: promptContext,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to generate prompt");
+      }
+
+      const promptData = await response.json();
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: `I understand you're asking about: "${content}"
+        content: `## 🎯 Optimized Jina AI Search Prompt
 
-For comprehensive research on digital spaces and online communities where Singapore youths gather, I recommend using Jina AI's Deep Search feature. It can help you find:
+**Your Query:** "${content}"
 
-• Specific online communities and platforms
-• Singapore-focused forums and social spaces
-• Gaming communities and Discord servers
-• Mental health support groups and resources
+**Generated Prompt:**
+${promptData.optimizedPrompt}
 
-Click the "Search with Jina AI" button below to get detailed insights with their advanced reasoning capabilities.`,
+**Search Strategy:** ${promptData.searchStrategy}
+
+**Expected Results:**
+${promptData.expectedResults.map((result: string) => `• ${result}`).join("\n")}
+
+**Reasoning:** ${promptData.reasoning}
+
+---
+*Click the button below to search with Jina AI using this optimized prompt.*`,
         timestamp: new Date(),
+        promptData, // Store the prompt data for the button
       };
 
       setChatMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error("Chat error:", error);
-      setChatError("Failed to get response. Please try again.");
+      setChatError("Failed to generate search prompt. Please try again.");
     } finally {
       setChatLoading(false);
     }
@@ -501,13 +538,12 @@ Click the "Search with Jina AI" button below to get detailed insights with their
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold text-blue-900 mb-2">
-                    Deep Search with Jina AI
+                    AI-Powered Prompt Generator
                   </h3>
                   <p className="text-blue-800 text-sm mb-3">
-                    For comprehensive research on digital spaces and online
-                    communities, use Jina AI&apos;s advanced reasoning
-                    capabilities to find Singapore youth communities, social
-                    platforms, and outreach opportunities.
+                    Our AI assistant uses Gemini 2.5 Flash to generate optimized
+                    prompts for Jina AI Deep Search, helping you find the most
+                    relevant online communities and digital spaces for outreach.
                   </p>
                   <div className="flex flex-wrap gap-2">
                     <button
@@ -526,6 +562,118 @@ Click the "Search with Jina AI" button below to get detailed insights with their
                       </span>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Search Context Configuration */}
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+              <h4 className="font-medium text-gray-800 mb-3">Search Context</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Target Audience
+                  </label>
+                  <select
+                    value={promptContext.targetAudience}
+                    onChange={(e) =>
+                      setPromptContext((prev) => ({
+                        ...prev,
+                        targetAudience: e.target.value,
+                      }))
+                    }
+                    className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Singapore youths aged 12-19">
+                      Singapore youths aged 12-19
+                    </option>
+                    <option value="Singapore teens with anxiety">
+                      Singapore teens with anxiety
+                    </option>
+                    <option value="Singapore students with depression">
+                      Singapore students with depression
+                    </option>
+                    <option value="Singapore gaming communities">
+                      Singapore gaming communities
+                    </option>
+                    <option value="Singapore international students">
+                      Singapore international students
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Platform Preference
+                  </label>
+                  <select
+                    value={promptContext.platform}
+                    onChange={(e) =>
+                      setPromptContext((prev) => ({
+                        ...prev,
+                        platform: e.target.value,
+                      }))
+                    }
+                    className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Any">Any Platform</option>
+                    <option value="Reddit">Reddit</option>
+                    <option value="Discord">Discord</option>
+                    <option value="Forums">Online Forums</option>
+                    <option value="Social Media">Social Media</option>
+                    <option value="Gaming Platforms">Gaming Platforms</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Outreach Goal
+                  </label>
+                  <select
+                    value={promptContext.outreachGoal}
+                    onChange={(e) =>
+                      setPromptContext((prev) => ({
+                        ...prev,
+                        outreachGoal: e.target.value,
+                      }))
+                    }
+                    className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Mental health support">
+                      Mental health support
+                    </option>
+                    <option value="Peer support groups">
+                      Peer support groups
+                    </option>
+                    <option value="Crisis intervention">
+                      Crisis intervention
+                    </option>
+                    <option value="Community building">
+                      Community building
+                    </option>
+                    <option value="Research and data collection">
+                      Research and data collection
+                    </option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Location Focus
+                  </label>
+                  <select
+                    value={promptContext.location}
+                    onChange={(e) =>
+                      setPromptContext((prev) => ({
+                        ...prev,
+                        location: e.target.value,
+                      }))
+                    }
+                    className="w-full p-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Singapore">Singapore</option>
+                    <option value="Singapore + Regional">
+                      Singapore + Regional
+                    </option>
+                    <option value="Global">Global</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -557,14 +705,14 @@ Click the "Search with Jina AI" button below to get detailed insights with their
                           disabled={chatLoading}
                           className="flex-1 text-left p-2 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded text-sm transition-colors disabled:opacity-50"
                         >
-                          Ask Locally
+                          Generate Prompt
                         </button>
                         <button
                           onClick={() => openJinaSearch(prompt.prompt)}
                           className="flex items-center gap-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors"
                         >
                           <Search className="w-3 h-3" />
-                          Search
+                          Direct Search
                         </button>
                       </div>
                     </div>
@@ -623,17 +771,51 @@ Click the "Search with Jina AI" button below to get detailed insights with their
                       {message.role === "assistant" &&
                         message.content &&
                         !chatLoading && (
-                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-200">
-                            <button
-                              onClick={() => copyToClipboard(message.content)}
-                              className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
-                            >
-                              <Copy className="w-3 h-3" />
-                              Copy
-                            </button>
-                            <span className="text-xs text-gray-400">
-                              {message.timestamp.toLocaleTimeString()}
-                            </span>
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            {/* Jina AI Action Buttons */}
+                            {message.promptData && (
+                              <div className="mb-3 flex flex-wrap gap-2">
+                                <button
+                                  onClick={() =>
+                                    window.open(
+                                      message.promptData!.jinaSearchUrl,
+                                      "_blank",
+                                      "noopener,noreferrer"
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                                >
+                                  <Search className="w-4 h-4" />
+                                  Search with Jina AI
+                                  <ExternalLink className="w-3 h-3" />
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    copyToClipboard(
+                                      message.promptData!.optimizedPrompt
+                                    )
+                                  }
+                                  className="inline-flex items-center gap-1 text-gray-600 hover:text-gray-800 text-sm px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                  Copy Prompt
+                                </button>
+                              </div>
+                            )}
+
+                            {/* Standard message actions */}
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => copyToClipboard(message.content)}
+                                className="text-xs text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                              >
+                                <Copy className="w-3 h-3" />
+                                Copy Response
+                              </button>
+                              <span className="text-xs text-gray-400">
+                                {message.timestamp.toLocaleTimeString()}
+                              </span>
+                            </div>
                           </div>
                         )}
                     </div>
@@ -660,7 +842,7 @@ Click the "Search with Jina AI" button below to get detailed insights with their
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Ask about youth communities, digital spaces, or outreach strategies..."
+                    placeholder="Ask about finding online communities, Discord servers, subreddits, or outreach opportunities..."
                     className="w-full resize-none border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={1}
                     disabled={chatLoading}
