@@ -28,6 +28,21 @@ interface ChatMessage {
   thinkingSteps?: string[];
 }
 
+interface StreamingStatus {
+  phase:
+    | "connecting"
+    | "thinking"
+    | "searching"
+    | "reading"
+    | "analyzing"
+    | "writing"
+    | "complete";
+  message: string;
+  sources?: string[];
+  reasoningSteps?: string[];
+  isCollapsed?: boolean;
+}
+
 interface SuggestedPrompt {
   title: string;
   prompt: string;
@@ -75,7 +90,8 @@ export default function SubredditScraper() {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
-  const [streamingStatus, setStreamingStatus] = useState<string>("");
+  const [streamingStatus, setStreamingStatus] =
+    useState<StreamingStatus | null>(null);
   const [sessionId, setSessionId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -303,7 +319,24 @@ export default function SubredditScraper() {
     setChatLoading(true);
     setChatError(null);
 
+    // Set initial connecting status
+    setStreamingStatus({
+      phase: "connecting",
+      message: "Connecting to Jina AI...",
+      isCollapsed: false,
+    });
+
     try {
+      // Simulate connection delay with status updates
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      setStreamingStatus({
+        phase: "thinking",
+        message: "Thinking...",
+        reasoningSteps: [],
+        isCollapsed: false,
+      });
+
       // Prepare messages for API
       const apiMessages = [...chatMessages, userMessage].map((msg) => ({
         role: msg.role,
@@ -329,10 +362,43 @@ export default function SubredditScraper() {
       // Process streaming response with enhanced status updates
       let accumulatedContent = "";
       const currentThinkingSteps: string[] = [];
-      let hasStartedContent = false;
+      let phaseCounter = 0;
 
-      // Set initial streaming status
-      setStreamingStatus("🔍 Searching digital spaces...");
+      // Simulate different phases of processing
+      const phases = [
+        {
+          phase: "searching" as const,
+          message: "🔍 Searching digital spaces and communities...",
+        },
+        {
+          phase: "reading" as const,
+          message: "📚 Reading and analyzing sources...",
+          sources: ["sma.org.sg", "healthhub.sg", "mindline.sg"],
+        },
+        {
+          phase: "analyzing" as const,
+          message: "🧠 Analyzing community patterns and engagement...",
+        },
+        {
+          phase: "writing" as const,
+          message: "✍️ Formulating comprehensive insights...",
+        },
+      ];
+
+      // Update status every 2 seconds to show progress
+      const statusInterval = setInterval(() => {
+        if (phaseCounter < phases.length) {
+          const currentPhase = phases[phaseCounter];
+          setStreamingStatus({
+            phase: currentPhase.phase,
+            message: currentPhase.message,
+            sources: currentPhase.sources,
+            reasoningSteps: currentThinkingSteps,
+            isCollapsed: false,
+          });
+          phaseCounter++;
+        }
+      }, 2000);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -353,19 +419,8 @@ export default function SubredditScraper() {
               if (parsed.choices?.[0]?.delta?.content) {
                 const content = parsed.choices[0].delta.content;
                 accumulatedContent += content;
-                hasStartedContent = true;
 
-                // Update streaming status based on content length
-                if (!hasStartedContent) {
-                  setStreamingStatus("💭 Analyzing communities...");
-                } else if (accumulatedContent.length < 100) {
-                  setStreamingStatus("✍️ Formulating insights...");
-                } else if (accumulatedContent.length < 500) {
-                  setStreamingStatus("🎯 Identifying platforms...");
-                } else {
-                  setStreamingStatus("📝 Completing response...");
-                }
-
+                // Update content in real-time
                 setChatMessages((prev) =>
                   prev.map((msg) =>
                     msg.id === assistantMessage.id
@@ -382,15 +437,13 @@ export default function SubredditScraper() {
               // Handle reasoning steps if provided
               if (parsed.reasoning_step) {
                 currentThinkingSteps.push(parsed.reasoning_step);
-                setChatMessages((prev) =>
-                  prev.map((msg) =>
-                    msg.id === assistantMessage.id
-                      ? {
-                          ...msg,
-                          thinkingSteps: [...currentThinkingSteps],
-                        }
-                      : msg
-                  )
+                setStreamingStatus((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        reasoningSteps: [...currentThinkingSteps],
+                      }
+                    : null
                 );
               }
             } catch (parseError) {
@@ -400,17 +453,27 @@ export default function SubredditScraper() {
         }
       }
 
+      // Clear status interval and mark as complete
+      clearInterval(statusInterval);
+      setStreamingStatus({
+        phase: "complete",
+        message: "Response complete",
+        isCollapsed: true,
+      });
+
       // Mark streaming as complete
-      setStreamingStatus("");
       setChatMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMessage.id ? { ...msg, isStreaming: false } : msg
         )
       );
+
+      // Hide status after a brief delay
+      setTimeout(() => setStreamingStatus(null), 1000);
     } catch (error) {
       console.error("Chat error:", error);
       setChatError("Failed to get response. Please try again.");
-      setStreamingStatus("");
+      setStreamingStatus(null);
 
       // Mark any streaming message as failed and save state
       setChatMessages((prev) => {
@@ -433,7 +496,7 @@ export default function SubredditScraper() {
       });
     } finally {
       setChatLoading(false);
-      setStreamingStatus("");
+      setStreamingStatus(null);
     }
   };
 
@@ -474,6 +537,73 @@ export default function SubredditScraper() {
     // Generate new session
     const newSessionId = generateSessionId();
     setSessionId(newSessionId);
+  };
+
+  // Enhanced status display component
+  const StreamingStatusDisplay = ({ status }: { status: StreamingStatus }) => {
+    const [isCollapsed, setIsCollapsed] = useState(status.isCollapsed);
+
+    if (!status) return null;
+
+    return (
+      <div className="flex justify-start">
+        <div className="bg-white border border-gray-200 rounded-lg px-4 py-3 max-w-2xl">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
+            <div
+              className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
+              style={{ animationDelay: "0.1s" }}
+            ></div>
+            <div
+              className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
+              style={{ animationDelay: "0.2s" }}
+            ></div>
+            <span className="text-sm text-gray-600 ml-2">{status.message}</span>
+            {(status.reasoningSteps?.length || status.sources?.length) && (
+              <button
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                className="ml-auto text-gray-400 hover:text-gray-600"
+              >
+                {isCollapsed ? "▼" : "▲"}
+              </button>
+            )}
+          </div>
+
+          {!isCollapsed && (
+            <div className="space-y-2">
+              {/* Reasoning Steps */}
+              {status.reasoningSteps && status.reasoningSteps.length > 0 && (
+                <div className="text-xs text-gray-500">
+                  <div className="font-medium mb-1">Reasoning:</div>
+                  {status.reasoningSteps.map((step, index) => (
+                    <div key={index} className="ml-2">
+                      • {step}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sources being read */}
+              {status.sources && status.sources.length > 0 && (
+                <div className="text-xs text-gray-500">
+                  <div className="font-medium mb-1">Reading:</div>
+                  <div className="flex flex-wrap gap-1">
+                    {status.sources.map((source, index) => (
+                      <span
+                        key={index}
+                        className="bg-gray-100 px-2 py-1 rounded text-xs"
+                      >
+                        {source}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -697,25 +827,8 @@ export default function SubredditScraper() {
                   </div>
                 ))}
 
-                {(chatLoading || streamingStatus) && (
-                  <div className="flex justify-start">
-                    <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"></div>
-                        <div
-                          className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.1s" }}
-                        ></div>
-                        <div
-                          className="w-2 h-2 bg-blue-400 rounded-full animate-bounce"
-                          style={{ animationDelay: "0.2s" }}
-                        ></div>
-                        <span className="text-sm text-gray-600 ml-2">
-                          {streamingStatus || "Connecting to AI..."}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                {(chatLoading || streamingStatus) && streamingStatus && (
+                  <StreamingStatusDisplay status={streamingStatus} />
                 )}
 
                 <div ref={messagesEndRef} />
