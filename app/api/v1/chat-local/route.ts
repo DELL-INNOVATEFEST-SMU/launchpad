@@ -21,8 +21,8 @@ interface ChatResponse {
 
 /**
  * Local NPU Chat API endpoint
- * This endpoint simulates interaction with a local AI model running on NPU
- * In production, this would connect to your local NPU service
+ * This endpoint connects to a local AI model running on NPU via LOCAL_NPU_BASE_URL
+ * The local NPU service should be running at LOCAL_NPU_BASE_URL/chat
  */
 export async function POST(request: NextRequest): Promise<NextResponse<ChatResponse | { error: string }>> {
   try {
@@ -39,81 +39,70 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
       return NextResponse.json({ error: "Last message must be from user" }, { status: 400 })
     }
 
-    // Simulate NPU processing delay (typically faster than cloud APIs)
-    await new Promise(resolve => setTimeout(resolve, 800))
-
-    // Enhanced system context for local model (available for future use)
-    // const systemContext = `You are Co-Pilot Samantha, a specialized AI assistant for mental health professionals.
-    // You're running locally on NPU for maximum privacy and speed.
-    //
-    // Current session context:
-    // - Active section: ${context?.currentSection || "General Notes"}
-    // - Case notes available: ${context?.caseNotes ? "Yes" : "No"}
-    //
-    // ${context?.caseNotes ? `Case context:\n${context.caseNotes}\n\n` : ""}`
-
-    // Simulate intelligent local NPU response
-    const userQuery = lastMessage.content.toLowerCase()
-    let responseContent = ""
-
-    if (userQuery.includes("help") || userQuery.includes("assist")) {
-      responseContent = `I'm here to help with your case work! Based on your current section (${context?.currentSection || "General Notes"}), I can assist with:
-
-• Case analysis and pattern recognition
-• Note organization and structuring  
-• Clinical observation insights
-• Treatment planning suggestions
-• Documentation review and improvement
-
-What specific aspect would you like help with?`
-    } else if (userQuery.includes("analyze") || userQuery.includes("review")) {
-      responseContent = `I can help analyze your case notes. ${context?.caseNotes ? 
-        "I can see you have case notes available. Let me review the key patterns and provide insights." : 
-        "I don't see any case notes yet. Could you share what you'd like me to analyze?"
-      }
-
-Key areas I can help analyze:
-• Risk assessment indicators
-• Treatment progress patterns
-• Client engagement levels
-• Intervention effectiveness
-• Documentation completeness`
-    } else if (userQuery.includes("plan") || userQuery.includes("intervention")) {
-      responseContent = `For intervention planning, I can help structure your approach:
-
-${context?.currentSection === "Intervention Plan" ? 
-  "I see you're working on the Intervention Plan section. " : 
-  "Let's focus on intervention planning. "
-}
-
-Consider these elements:
-• Client-specific goals and objectives
-• Evidence-based intervention strategies
-• Measurable outcomes and metrics
-• Timeline and milestones
-• Risk mitigation strategies
-
-What specific intervention area would you like to develop?`
-    } else {
-      responseContent = `I understand you're asking: "${lastMessage.content}"
-
-As your local NPU-powered assistant, I'm processing this request privately on your device. I can help with:
-
-• Case documentation and organization
-• Clinical insights and analysis
-• Treatment planning and interventions
-• Risk assessment and safety planning
-• Professional development and best practices
-
-${context?.caseNotes ? "I have access to your current case notes for context-aware assistance." : "Feel free to share case details for more specific guidance."}
-
-How can I best support your case work today?`
+    // Get the local NPU base URL from environment variable
+    const localNpuBaseUrl = process.env.LOCAL_NPU_BASE_URL
+    
+    if (!localNpuBaseUrl) {
+      return NextResponse.json(
+        { error: "LOCAL_NPU_BASE_URL environment variable not configured" },
+        { status: 500 }
+      )
     }
 
+    // Construct the full endpoint URL
+    const localNpuEndpoint = `${localNpuBaseUrl}/chat`
+
+    // Ensure the first message is always a system message with prompt
+    const systemPrompt = `You are Co-Pilot Samantha, a specialized AI assistant for mental health professionals.
+You're running locally on NPU for maximum privacy and speed.
+
+Current session context:
+- Active section: ${context?.currentSection || "General Notes"}
+- Case notes available: ${context?.caseNotes ? "Yes" : "No"}
+
+${context?.caseNotes ? `Case context:\n${context.caseNotes}\n\n` : ""}
+
+You should provide helpful, professional assistance with case documentation, clinical insights, treatment planning, and evidence-based recommendations. Always maintain confidentiality and professional standards.`
+
+    // Prepend system message if not already present
+    const messagesWithSystem = messages[0]?.role === "system" 
+      ? messages 
+      : [
+          {
+            role: "system" as const,
+            content: systemPrompt
+          },
+          ...messages
+        ]
+
+    // Forward the request to the local NPU service
+    const npuResponse = await fetch(localNpuEndpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messages: messagesWithSystem,
+        context,
+      }),
+    })
+
+    if (!npuResponse.ok) {
+      const errorText = await npuResponse.text()
+      console.error("Local NPU service error:", errorText)
+      return NextResponse.json(
+        { error: "Local NPU service unavailable" },
+        { status: 503 }
+      )
+    }
+
+    const npuData = await npuResponse.json()
+
+    // Transform the response to match our expected format
     const response: ChatResponse = {
       message: {
         role: "assistant",
-        content: responseContent
+        content: npuData.text || npuData.message?.content || npuData.content || "No response from local NPU",
       },
       model: "local-npu-v1",
       timestamp: new Date().toISOString()
