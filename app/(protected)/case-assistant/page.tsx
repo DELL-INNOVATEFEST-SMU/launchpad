@@ -6,8 +6,6 @@ import {
   Bold,
   Italic,
   List,
-  Mic,
-  MicOff,
   Save,
   Download,
   Type,
@@ -20,7 +18,6 @@ interface NoteSection {
   id: string;
   title: string;
   content: string;
-  isRecording: boolean;
   infoText?: string;
 }
 
@@ -30,7 +27,6 @@ export default function CaseWriter() {
       id: "general-session-notes",
       title: "General Notes",
       content: "",
-      isRecording: false,
       infoText:
         "- Concise descriptions of issues, facts, significant observations and risk assessments, if any\n- Problem definition and genogram for initial sessions\n- Interventions, actions and any referrals made in session\n- Case conference notes, if any",
     },
@@ -38,7 +34,6 @@ export default function CaseWriter() {
       id: "session-evaluation",
       title: "Evaluation / Action Plans",
       content: "",
-      isRecording: false,
       infoText:
         "Session Evaluation\n- Message or task for client and any follow up\n- Outcomes or decisions at end of session",
     },
@@ -46,7 +41,6 @@ export default function CaseWriter() {
       id: "intervention-plan",
       title: "Intervention Plan",
       content: "",
-      isRecording: false,
     },
   ]);
 
@@ -59,8 +53,6 @@ export default function CaseWriter() {
   const textareaRefs = useRef<{ [key: string]: HTMLTextAreaElement | null }>(
     {}
   );
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
 
   const updateSectionContent = (sectionId: string, content: string) => {
     setSections((prev) =>
@@ -123,60 +115,6 @@ export default function CaseWriter() {
     }, 0);
   };
 
-  const startRecording = async (sectionId: string) => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream);
-      chunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
-        }
-      };
-
-      mediaRecorderRef.current.onstop = () => {
-        // Here you would typically send the blob to a transcription service
-        // For now, we'll just add a placeholder
-        const currentContent =
-          sections.find((s) => s.id === sectionId)?.content || "";
-        const timestamp = new Date().toLocaleTimeString();
-        updateSectionContent(
-          sectionId,
-          currentContent +
-            `\n\n[Voice Recording - ${timestamp}]\n[Transcription would appear here]\n`
-        );
-
-        // Clean up
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      mediaRecorderRef.current.start();
-      setSections((prev) =>
-        prev.map((section) =>
-          section.id === sectionId
-            ? { ...section, isRecording: true }
-            : { ...section, isRecording: false }
-        )
-      );
-    } catch (error) {
-      console.error("Error starting recording:", error);
-    }
-  };
-
-  const stopRecording = (sectionId: string) => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state === "recording"
-    ) {
-      mediaRecorderRef.current.stop();
-    }
-    setSections((prev) =>
-      prev.map((section) =>
-        section.id === sectionId ? { ...section, isRecording: false } : section
-      )
-    );
-  };
 
   const saveNotes = () => {
     const notesData = {
@@ -348,24 +286,6 @@ export default function CaseWriter() {
                           >
                             <Type className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() =>
-                              section.isRecording
-                                ? stopRecording(section.id)
-                                : startRecording(section.id)
-                            }
-                            className={`h-8 w-8 p-0 border rounded-md flex items-center justify-center ${
-                              section.isRecording
-                                ? "bg-red-500 text-white border-red-500"
-                                : "bg-white border-gray-200 hover:bg-gray-50"
-                            }`}
-                          >
-                            {section.isRecording ? (
-                              <MicOff className="h-4 w-4" />
-                            ) : (
-                              <Mic className="h-4 w-4" />
-                            )}
-                          </button>
                         </div>
                       </div>
                     </div>
@@ -387,12 +307,6 @@ export default function CaseWriter() {
                           lineHeight: "1.6",
                         }}
                       />
-                      {section.isRecording && (
-                        <div className="mt-4 flex items-center gap-2 text-sm text-red-600">
-                          <div className="h-2 w-2 animate-pulse rounded-full bg-red-600" />
-                          Recording in progress...
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}
