@@ -14,6 +14,17 @@ pnpm dev
 bun dev
 ```
 
+> docker 
+```bash
+docker build -t launchpad:latest . 
+
+docker run -p 3000:3000 launchpad:latest
+
+docker build -t launchpad:latest . 
+docker tag launchpad:latest ihl-harbor.apps.innovate.sg-cna.com/smu/launchpad:latest
+docker push ihl-harbor.apps.innovate.sg-cna.com/smu/launchpad:latest
+```
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
