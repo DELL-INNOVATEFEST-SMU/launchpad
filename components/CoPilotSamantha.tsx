@@ -322,15 +322,17 @@ export default function CoPilotSamantha({
   );
 
   return (
-    <div className="w-96 bg-white border-l border-gray-200 shadow-xl flex flex-col h-full">
+    <div className="w-full lg:w-96 xl:w-[28rem] bg-white border-l border-gray-200 shadow-xl flex flex-col h-full">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 bg-blue-50">
+      <div className="p-3 sm:p-4 border-b border-gray-200 bg-blue-50">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-blue-600" />
-            <h3 className="font-semibold text-gray-900">Co-Pilot Samantha</h3>
+          <div className="flex items-center gap-2 min-w-0">
+            <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0" />
+            <h3 className="font-semibold text-gray-900 text-sm sm:text-base truncate">
+              Co-Pilot Samantha
+            </h3>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <button
               onClick={() => setIsCollapsed(!isCollapsed)}
               className="p-1 hover:bg-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -369,10 +371,15 @@ export default function CoPilotSamantha({
               <div className="flex items-center justify-between mb-2">
                 <button
                   onClick={() => setShowSystemPromptEditor(!showSystemPromptEditor)}
-                  className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800"
+                  className="flex items-center gap-1 text-xs sm:text-sm text-gray-600 hover:text-gray-800"
                 >
                   <Edit3 className="h-3 w-3" />
-                  {showSystemPromptEditor ? "Hide" : "Edit"} System Prompt
+                  <span className="hidden sm:inline">
+                    {showSystemPromptEditor ? "Hide" : "Edit"} System Prompt
+                  </span>
+                  <span className="sm:hidden">
+                    {showSystemPromptEditor ? "Hide" : "Edit"} Prompt
+                  </span>
                 </button>
                 {showSystemPromptEditor && (
                   <div className="flex items-center gap-1">
@@ -415,16 +422,16 @@ export default function CoPilotSamantha({
             <div className="relative">
               <button
                 onClick={() => setShowModelSelector(!showModelSelector)}
-                className="w-full flex items-center justify-between p-2 bg-white border border-gray-300 rounded-md text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full flex items-center justify-between p-2 bg-white border border-gray-300 rounded-md text-xs sm:text-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label="Select AI model"
               >
-                <div className="flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <Settings className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                   <span className="truncate">
                     {selectedModelInfo?.name || "Select Model"}
                   </span>
                 </div>
-                <ChevronDown className="h-4 w-4 flex-shrink-0" />
+                <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
               </button>
 
               {showModelSelector && (
@@ -434,15 +441,15 @@ export default function CoPilotSamantha({
                       key={model.id}
                       onClick={() => updateModelSelection(model.id)}
                       disabled={model.status === "unavailable"}
-                      className={`w-full text-left p-3 hover:bg-gray-50 first:rounded-t-md last:rounded-b-md disabled:opacity-50 disabled:cursor-not-allowed border-b border-gray-100 last:border-b-0 ${
+                      className={`w-full text-left p-2 sm:p-3 hover:bg-gray-50 first:rounded-t-md last:rounded-b-md disabled:opacity-50 disabled:cursor-not-allowed border-b border-gray-100 last:border-b-0 ${
                         modelConfig.selectedModel === model.id
                           ? "bg-blue-50 text-blue-700"
                           : ""
                       }`}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <div className="font-medium">{model.name}</div>
-                        <div className="flex items-center gap-2">
+                        <div className="font-medium text-sm truncate">{model.name}</div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
                           <span
                             className={`text-xs ${getStatusColor(
                               model.status
@@ -459,14 +466,14 @@ export default function CoPilotSamantha({
                           </span>
                         </div>
                       </div>
-                      <div className="text-xs text-gray-500 mb-2">
+                      <div className="text-xs text-gray-500 mb-2 line-clamp-2">
                         {model.description}
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 flex-wrap">
                         <span className="text-xs px-2 py-1 bg-gray-100 rounded">
                           {model.privacy}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-500 truncate">
                           {model.capabilities.slice(0, 2).join(", ")}
                           {model.capabilities.length > 2 && "..."}
                         </span>
@@ -483,25 +490,25 @@ export default function CoPilotSamantha({
       {!isCollapsed && (
         <>
           {/* Messages - Fixed height container */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 min-h-0">
             {messages.length === 0 && (
-              <div className="text-center text-gray-500 py-8">
+              <div className="text-center text-gray-500 py-4 sm:py-6">
                 <Image
                   src="/co_pilot_samantha.png"
                   alt="Co-Pilot Samantha"
-                  width={48}
-                  height={48}
-                  className="mx-auto mb-3 rounded-full"
+                  width={32}
+                  height={32}
+                  className="mx-auto mb-2 rounded-full sm:w-10 sm:h-10"
                 />
-                <p className="text-sm font-medium">
+                <p className="text-xs font-medium">
                   Hi! I&apos;m Co-Pilot Samantha.
                 </p>
                 <p className="text-xs mt-1">
                   Your AI assistant for case management.
                 </p>
-                <div className="mt-4 text-xs text-gray-400">
-                  <p>I can help with:</p>
-                  <ul className="mt-2 space-y-1">
+                <div className="mt-3 text-xs text-gray-400">
+                  <p className="mb-1">I can help with:</p>
+                  <ul className="space-y-0.5 text-xs">
                     <li>• Case analysis and insights</li>
                     <li>• Note organization</li>
                     <li>• Treatment planning</li>
@@ -519,13 +526,13 @@ export default function CoPilotSamantha({
                 }`}
               >
                 <div
-                  className={`max-w-[80%] p-3 rounded-lg ${
+                  className={`max-w-[85%] sm:max-w-[80%] p-2 sm:p-3 rounded-lg ${
                     message.role === "user"
                       ? "bg-blue-600 text-white"
                       : "bg-gray-100 text-gray-900"
                   }`}
                 >
-                  <div className="text-sm whitespace-pre-wrap break-words">
+                  <div className="text-xs sm:text-sm whitespace-pre-wrap break-words">
                     {message.content}
                   </div>
                   <div
@@ -548,10 +555,10 @@ export default function CoPilotSamantha({
 
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 p-3 rounded-lg">
+                <div className="bg-gray-100 p-2 sm:p-3 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span className="text-sm text-gray-600">
+                    <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                    <span className="text-xs sm:text-sm text-gray-600">
                       {selectedModelInfo?.responseTime === "fast"
                         ? "Thinking..."
                         : "Processing..."}
@@ -565,7 +572,7 @@ export default function CoPilotSamantha({
           </div>
 
           {/* Input Area */}
-          <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <div className="p-3 sm:p-4 border-t border-gray-200 bg-gray-50">
             <div className="flex items-end gap-2">
               <textarea
                 ref={textareaRef}
@@ -573,7 +580,7 @@ export default function CoPilotSamantha({
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Ask Samantha about your case..."
-                className="flex-1 min-h-[60px] max-h-[120px] p-3 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 min-h-[50px] sm:min-h-[60px] max-h-[120px] p-2 sm:p-3 border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
                 disabled={isLoading}
                 aria-label="Message input"
               />
@@ -585,7 +592,7 @@ export default function CoPilotSamantha({
                   title="Send message"
                   aria-label="Send message"
                 >
-                  <Send className="h-4 w-4" />
+                  <Send className="h-3 w-3 sm:h-4 sm:w-4" />
                 </button>
                 {messages.length > 0 && (
                   <button
@@ -594,7 +601,7 @@ export default function CoPilotSamantha({
                     title="Clear conversation"
                     aria-label="Clear conversation"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                   </button>
                 )}
               </div>
