@@ -12,6 +12,9 @@ import {
   Trash2,
   Loader2,
   AlertCircle,
+  Edit3,
+  Save,
+  RotateCcw,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -56,6 +59,7 @@ interface ChatRequest {
     currentSection?: string;
     caseNotes?: string;
   };
+  systemPrompt?: string;
 }
 
 interface ChatResponse {
@@ -83,13 +87,20 @@ export default function CoPilotSamantha({
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSystemPromptEditor, setShowSystemPromptEditor] = useState(false);
+  const [systemPrompt, setSystemPrompt] = useState(
+    "You are Co-Pilot Samantha, an AI assistant specialized in mental health case management. You help therapists and counselors with case analysis, note organization, treatment planning, and clinical documentation. You provide professional, empathetic, and evidence-based guidance while maintaining strict confidentiality and ethical standards."
+  );
+  const [isEditingSystemPrompt, setIsEditingSystemPrompt] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const systemPromptTextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load model configuration on mount
+  // Load model configuration and system prompt on mount
   useEffect(() => {
     fetchModelConfig();
+    loadSystemPrompt();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -108,6 +119,37 @@ export default function CoPilotSamantha({
       )}px`;
     }
   }, [inputValue]);
+
+  // Auto-resize system prompt textarea
+  useEffect(() => {
+    if (systemPromptTextareaRef.current && isEditingSystemPrompt) {
+      systemPromptTextareaRef.current.style.height = "auto";
+      systemPromptTextareaRef.current.style.height = `${Math.min(
+        systemPromptTextareaRef.current.scrollHeight,
+        200
+      )}px`;
+    }
+  }, [systemPrompt, isEditingSystemPrompt]);
+
+  const loadSystemPrompt = useCallback(() => {
+    const saved = localStorage.getItem("copilot-system-prompt");
+    if (saved) {
+      setSystemPrompt(saved);
+    }
+  }, []);
+
+  const saveSystemPrompt = useCallback(() => {
+    localStorage.setItem("copilot-system-prompt", systemPrompt);
+    setIsEditingSystemPrompt(false);
+  }, [systemPrompt]);
+
+  const resetSystemPrompt = useCallback(() => {
+    const defaultPrompt =
+      "You are Co-Pilot Samantha, an AI assistant specialized in mental health case management. You help therapists and counselors with case analysis, note organization, treatment planning, and clinical documentation. You provide professional, empathetic, and evidence-based guidance while maintaining strict confidentiality and ethical standards.";
+    setSystemPrompt(defaultPrompt);
+    localStorage.setItem("copilot-system-prompt", defaultPrompt);
+    setIsEditingSystemPrompt(false);
+  }, []);
 
   const fetchModelConfig = useCallback(async () => {
     try {
@@ -151,6 +193,7 @@ export default function CoPilotSamantha({
           content: msg.content,
         })),
         context,
+        systemPrompt,
       };
 
       const response = await fetch(endpoint, {
@@ -195,7 +238,7 @@ export default function CoPilotSamantha({
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, modelConfig, messages, context]);
+  }, [inputValue, isLoading, modelConfig, messages, context, systemPrompt]);
 
   const handleKeyPress = useCallback(
     (e: React.KeyboardEvent) => {
@@ -321,6 +364,53 @@ export default function CoPilotSamantha({
               </div>
             )}
 
+            {/* System Prompt Editor */}
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => setShowSystemPromptEditor(!showSystemPromptEditor)}
+                  className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-800"
+                >
+                  <Edit3 className="h-3 w-3" />
+                  {showSystemPromptEditor ? "Hide" : "Edit"} System Prompt
+                </button>
+                {showSystemPromptEditor && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={saveSystemPrompt}
+                      className="p-1 text-green-600 hover:bg-green-50 rounded"
+                      title="Save system prompt"
+                    >
+                      <Save className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={resetSystemPrompt}
+                      className="p-1 text-gray-600 hover:bg-gray-50 rounded"
+                      title="Reset to default"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              {showSystemPromptEditor && (
+                <div className="space-y-2">
+                  <textarea
+                    ref={systemPromptTextareaRef}
+                    value={systemPrompt}
+                    onChange={(e) => setSystemPrompt(e.target.value)}
+                    placeholder="Enter system prompt..."
+                    className="w-full p-2 text-xs border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={3}
+                  />
+                  <p className="text-xs text-gray-500">
+                    This controls how Samantha responds. Changes take effect for new conversations.
+                  </p>
+                </div>
+              )}
+            </div>
+
             {/* Model Selector */}
             <div className="relative">
               <button
@@ -392,8 +482,8 @@ export default function CoPilotSamantha({
 
       {!isCollapsed && (
         <>
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {/* Messages - Fixed height container */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
             {messages.length === 0 && (
               <div className="text-center text-gray-500 py-8">
                 <Image

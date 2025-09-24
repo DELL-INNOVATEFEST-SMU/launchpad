@@ -24,7 +24,7 @@ export async function GET(): Promise<NextResponse<ModelConfig>> {
   const models: ModelInfo[] = [
     {
       id: "local-npu",
-      name: "Local NPU Model",
+      name: "Local Model",
       description: "Fast, private AI running on your device's Neural Processing Unit",
       capabilities: [
         "Case analysis",

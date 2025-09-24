@@ -12,6 +12,7 @@ interface ChatRequest {
     currentSection?: string
     caseNotes?: string
   }
+  systemPrompt?: string
 }
 
 interface ChatResponse {
@@ -27,7 +28,7 @@ interface ChatResponse {
 export async function POST(request: NextRequest): Promise<NextResponse<ChatResponse | { error: string }>> {
   try {
     const body: ChatRequest = await request.json()
-    const { messages, context } = body
+    const { messages, context, systemPrompt } = body
 
     // Validate request
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -58,8 +59,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
       }
     })
 
-    // Enhanced system prompt for mental health context
-    const systemPrompt = `You are Co-Pilot Samantha, an advanced AI assistant specialized in supporting mental health professionals with case analysis, clinical documentation, and therapeutic insights.
+    // Use custom system prompt if provided, otherwise use default
+    const defaultSystemPrompt = `You are Co-Pilot Samantha, an advanced AI assistant specialized in supporting mental health professionals with case analysis, clinical documentation, and therapeutic insights.
 
 PROFESSIONAL CONTEXT:
 - You're assisting licensed mental health professionals
@@ -92,6 +93,8 @@ GUIDELINES:
 
 Please provide helpful, professional assistance based on the conversation and available context.`
 
+    const finalSystemPrompt = systemPrompt || defaultSystemPrompt
+
     // Convert message history to Gemini format
     const history = messages.slice(0, -1).map(msg => ({
       role: msg.role === "assistant" ? "model" : "user",
@@ -105,7 +108,7 @@ Please provide helpful, professional assistance based on the conversation and av
     })
 
     const result = await chat.sendMessage([
-      systemPrompt,
+      finalSystemPrompt,
       currentMessage.content
     ].join("\n\n"))
 

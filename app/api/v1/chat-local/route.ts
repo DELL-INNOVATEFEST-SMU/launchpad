@@ -11,6 +11,7 @@ interface ChatRequest {
     currentSection?: string
     caseNotes?: string
   }
+  systemPrompt?: string
 }
 
 interface ChatResponse {
@@ -27,7 +28,7 @@ interface ChatResponse {
 export async function POST(request: NextRequest): Promise<NextResponse<ChatResponse | { error: string }>> {
   try {
     const body: ChatRequest = await request.json()
-    const { messages, context } = body
+    const { messages, context, systemPrompt } = body
 
     // Validate request
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -52,8 +53,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
     // Construct the full endpoint URL
     const localNpuEndpoint = `${localNpuBaseUrl}/chat`
 
-    // Ensure the first message is always a system message with prompt
-    const systemPrompt = `You are Co-Pilot Samantha, a specialized AI assistant for mental health professionals.
+    // Use custom system prompt if provided, otherwise use default
+    const defaultSystemPrompt = `You are Co-Pilot Samantha, a specialized AI assistant for mental health professionals.
 You're running locally on NPU for maximum privacy and speed.
 
 Current session context:
@@ -64,13 +65,15 @@ ${context?.caseNotes ? `Case context:\n${context.caseNotes}\n\n` : ""}
 
 You should provide helpful, professional assistance with case documentation, clinical insights, treatment planning, and evidence-based recommendations. Always maintain confidentiality and professional standards.`
 
+    const finalSystemPrompt = systemPrompt || defaultSystemPrompt
+
     // Prepend system message if not already present
     const messagesWithSystem = messages[0]?.role === "system" 
       ? messages 
       : [
           {
             role: "system" as const,
-            content: systemPrompt
+            content: finalSystemPrompt
           },
           ...messages
         ]
@@ -104,7 +107,7 @@ You should provide helpful, professional assistance with case documentation, cli
         role: "assistant",
         content: npuData.text || npuData.message?.content || npuData.content || "No response from local NPU",
       },
-      model: "local-npu-v1",
+      model: "local-model-v1",
       timestamp: new Date().toISOString()
     }
 
