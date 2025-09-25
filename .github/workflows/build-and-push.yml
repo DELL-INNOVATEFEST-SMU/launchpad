@@ -1,0 +1,227 @@
+name: Build & Push to Harbor + Deploy to OpenShift (InnovateFest)
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  APP_NAME: launchpad
+  REGISTRY: ihl-harbor.apps.innovate.sg-cna.com
+  HARBOR_PROJECT: ${{ secrets.HARBOR_PROJECT }}
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  build-and-push:
+    name: Build Next.js & Push Image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_CLI_SECRET }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.APP_NAME }}:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.APP_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.APP_NAME }}:buildcache,mode=max
+          provenance: false
+
+  deploy:
+    name: Deploy to OpenShift
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    env:
+      OPENSHIFT_SERVER: ${{ secrets.OPENSHIFT_SERVER }}
+      OPENSHIFT_TOKEN: ${{ secrets.OPENSHIFT_TOKEN }}
+      OPENSHIFT_NAMESPACE: ${{ secrets.OPENSHIFT_NAMESPACE }}
+
+    steps:
+      - name: Check required OpenShift secrets
+        id: check
+        run: |
+          missing=0
+          for v in OPENSHIFT_SERVER OPENSHIFT_TOKEN OPENSHIFT_NAMESPACE; do
+            if [ -z "${!v}" ]; then
+              echo "::notice title=Missing secret::$v is not set."
+              missing=1
+            fi
+          done
+          if [ $missing -eq 0 ]; then
+            echo "ok=true" >> $GITHUB_OUTPUT
+          else
+            echo "ok=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Install oc
+        if: ${{ steps.check.outputs.ok == 'true' }}
+        uses: redhat-actions/oc-installer@v1
+        with:
+          oc_version: 'latest'
+
+      - name: Login to OpenShift
+        if: ${{ steps.check.outputs.ok == 'true' }}
+        uses: redhat-actions/oc-login@v1
+        with:
+          openshift_server_url: ${{ env.OPENSHIFT_SERVER }}
+          openshift_token: ${{ env.OPENSHIFT_TOKEN }}
+          namespace: ${{ env.OPENSHIFT_NAMESPACE }}
+          insecure_skip_tls_verify: false
+
+      - name: Create/Update Harbor pull secret
+        if: ${{ steps.check.outputs.ok == 'true' }}
+        run: |
+          set -euo pipefail
+          SECRET=harbor-pull
+          SERVER="${{ env.REGISTRY }}"
+          USER="${{ secrets.HARBOR_USERNAME }}"
+          PASS="${{ secrets.HARBOR_CLI_SECRET }}"
+          NS="${{ env.OPENSHIFT_NAMESPACE }}"
+
+          if oc -n "$NS" get secret "$SECRET" >/dev/null 2>&1; then
+            oc -n "$NS" delete secret "$SECRET"
+          fi
+
+          oc -n "$NS" create secret docker-registry "$SECRET" \
+            --docker-server="$SERVER" \
+            --docker-username="$USER" \
+            --docker-password="$PASS"
+
+          oc -n "$NS" secrets link default "$SECRET" --for=pull || true
+          oc -n "$NS" secrets link builder "$SECRET" --for=pull || true
+
+      - name: Render manifests for Next.js app
+        if: ${{ steps.check.outputs.ok == 'true' }}
+        id: manifests
+        run: |
+          set -euo pipefail
+          IMAGE="${{ env.REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.APP_NAME }}:${{ env.IMAGE_TAG }}"
+
+          cat > app.yaml <<'YAML'
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: launchpad
+            labels: { app: launchpad }
+          spec:
+            replicas: 1
+            strategy:
+              type: RollingUpdate
+              rollingUpdate:
+                maxSurge: 0
+                maxUnavailable: 1
+            selector:
+              matchLabels: { app: launchpad }
+            template:
+              metadata:
+                labels: { app: launchpad }
+              spec:
+                containers:
+                  - name: launchpad
+                    image: REPLACE_IMAGE
+                    imagePullPolicy: IfNotPresent
+                    ports:
+                      - containerPort: 3000
+                    env:
+                      - name: PORT
+                        value: "3000"
+                    resources:
+                      requests:
+                        cpu: "100m"
+                        memory: "128Mi"
+                      limits:
+                        cpu: "500m"
+                        memory: "512Mi"
+                    readinessProbe:
+                      httpGet: { path: "/", port: 3000 }
+                      initialDelaySeconds: 5
+                      periodSeconds: 10
+                    livenessProbe:
+                      httpGet: { path: "/", port: 3000 }
+                      initialDelaySeconds: 15
+                      periodSeconds: 20
+          ---
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: launchpad
+            labels: { app: launchpad }
+          spec:
+            selector: { app: launchpad }
+            ports:
+              - name: http
+                port: 80
+                targetPort: 3000
+          ---
+          apiVersion: route.openshift.io/v1
+          kind: Route
+          metadata:
+            name: launchpad
+            labels: { app: launchpad }
+          spec:
+            to: { kind: Service, name: launchpad }
+            port: { targetPort: http }
+            tls: { termination: edge }
+          YAML
+
+          sed -i "s|REPLACE_IMAGE|$IMAGE|g" app.yaml
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Apply manifests
+        if: ${{ steps.check.outputs.ok == 'true' }}
+        run: |
+          NS="${{ env.OPENSHIFT_NAMESPACE }}"
+          oc -n "$NS" apply -f app.yaml
+
+      - name: Wait for rollout
+        if: ${{ steps.check.outputs.ok == 'true' }}
+        run: |
+          oc -n "${{ env.OPENSHIFT_NAMESPACE }}" rollout status deployment/launchpad --timeout=180s
+
+      - name: Show Route URL
+        if: ${{ steps.check.outputs.ok == 'true' }}
+        run: |
+          echo "---------------------------------------------------------------"
+          echo "Image deployed: ${{ steps.manifests.outputs.image }}"
+          URL=$(oc -n "${{ env.OPENSHIFT_NAMESPACE }}" get route/launchpad -o jsonpath='https://{.spec.host}')
+          echo "App URL: $URL"
+          echo "---------------------------------------------------------------"
+
+      - name: Skipped (missing secrets)
+        if: ${{ steps.check.outputs.ok != 'true' }}
+        run: |
+          echo "OpenShift deploy skipped because one or more of:"
+          echo "  - OPENSHIFT_SERVER"
+          echo "  - OPENSHIFT_TOKEN"
+          echo "  - OPENSHIFT_NAMESPACE"
+          echo "were not set as repository secrets."
