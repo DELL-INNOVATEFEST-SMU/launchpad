@@ -60,6 +60,12 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.APP_NAME }}:latest
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.APP_NAME }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.APP_NAME }}:buildcache,mode=max
+          build-args: |
+            NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+            NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+            GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}
+            LOCAL_NPU_BASE_URL=${{ secrets.LOCAL_NPU_BASE_URL }}
+            SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           provenance: false
 
   deploy:
