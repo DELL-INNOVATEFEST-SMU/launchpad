@@ -274,7 +274,10 @@ export default function StartingPointAggregator() {
                               />
                             </svg>
                             {row.source === "discord" ? (
-                              <span>{row.link || "Saurabh's server"}</span>
+                              <span>
+                                {row.link.split(";sep")[0] ||
+                                  "Saurabh's server"}
+                              </span>
                             ) : (
                               <a
                                 href={row.link}
